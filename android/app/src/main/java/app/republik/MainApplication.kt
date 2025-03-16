@@ -1,4 +1,4 @@
-package ch.republik.app
+package app.republik
 
 import android.app.Application
 import android.content.res.Configuration

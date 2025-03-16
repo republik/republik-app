@@ -10,11 +10,16 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "associatedDomains": ["applinks:republik.ch", "applinks:republik.ch"],
+      "associatedDomains": [
+        "applinks:republik.ch",
+        "applinks:republik.ch"
+      ],
       "bundleIdentifier": "app.republik",
       "buildNumber": "400",
       "infoPlist": {
-        "UIBackgroundModes": ["audio"]
+        "UIBackgroundModes": [
+          "audio"
+        ]
       }
     },
     "android": {
@@ -35,7 +40,10 @@
               "pathPrefix": "/records"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ],
       "permissions": [
@@ -71,6 +79,7 @@
       "eas": {
         "projectId": "101932ce-34f7-4301-b760-c11309ce617e"
       }
-    }
+    },
+    "owner": "republikmagazin"
   }
 }

@@ -86,9 +86,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'ch.republik.app'
+    namespace 'app.republik'
     defaultConfig {
-        applicationId 'ch.republik.app'
+        applicationId 'app.republik'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 400

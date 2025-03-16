@@ -1,4 +1,4 @@
-package ch.republik.app
+package app.republik
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build
