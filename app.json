@@ -11,8 +11,8 @@
     "ios": {
       "supportsTablet": true,
       "associatedDomains": ["applinks:republik.ch", "applinks:republik.ch"],
-      "bundleIdentifier": "ch.republik.app",
-      "buildNumber": "1",
+      "bundleIdentifier": "app.republik",
+      "buildNumber": "400",
       "infoPlist": {
         "UIBackgroundModes": ["audio"]
       }
@@ -22,7 +22,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "ch.republik.app",
+      "package": "app.republik",
       "versionCode": 400,
       "intentFilters": [
         {
