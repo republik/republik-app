@@ -36,3 +36,14 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+
+# Env
+.env
+.env.dev
+.env.development
+.env.staging
+.env.production
+
+# Fonts
+*.otf
+assets/fonts

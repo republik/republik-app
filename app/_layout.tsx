@@ -1,12 +1,22 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
-import 'react-native-reanimated';
+import { useFonts } from "expo-font";
+import * as SplashScreen from "expo-splash-screen";
+import { StatusBar } from "expo-status-bar";
+import { useEffect, useState } from "react";
 
-import { useColorScheme } from '@/hooks/useColorScheme';
+import {
+  DarkTheme,
+  DefaultTheme,
+  ThemeProvider,
+} from "@react-navigation/native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { useColorScheme } from "@/hooks/useColorScheme";
+import { GlobalStateProvider } from "@/lib/GlobalState";
+import DeepLinkingService from "@/lib/DeepLinking";
+import AppStateService from "@/lib/AppState";
+import PushService from "@/lib/Push";
+import Web from "@/components/Web";
+import SetupAudioPlayerSerivce from '@/components/AudioPlayer/SetupAudioPlayerService'
+import HeadlessAudioPlayer from '@/components/AudioPlayer/HeadlessAudioPlayer'
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -14,8 +24,9 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
+  const [isAudioPlayerReady, setIsAudioPlayerReady] = useState(false)
 
   useEffect(() => {
     if (loaded) {
@@ -23,17 +34,36 @@ export default function RootLayout() {
     }
   }, [loaded]);
 
+  //Initialize the AudioPlayer
+  useEffect(() => {
+    const run = async () => {
+      const nextReadyState = await SetupAudioPlayerSerivce()
+      setIsAudioPlayerReady(nextReadyState)
+    }
+    if (!isAudioPlayerReady) {
+      run()
+    }
+  }, [isAudioPlayerReady, setIsAudioPlayerReady])
+
   if (!loaded) {
     return null;
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <GlobalStateProvider>
+      <PushService />
+      <DeepLinkingService />
+      <AppStateService />
+      {/* <CookieService /> */}
+
+      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+        <SafeAreaProvider>
+          <Web />
+        </SafeAreaProvider>
+        <StatusBar animated translucent={true} />
+      </ThemeProvider>
+
+      {isAudioPlayerReady && <HeadlessAudioPlayer />}
+    </GlobalStateProvider>
   );
 }
