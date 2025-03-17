@@ -3,7 +3,7 @@ import { View, ActivityIndicator, StyleSheet } from "react-native";
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
 
-const Loader = ({ loading }) => {
+const Loader = ({ loading }: { loading: boolean }) => {
   const colorScheme = useColorScheme();
   return (
     <View

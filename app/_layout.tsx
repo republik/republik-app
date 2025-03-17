@@ -24,7 +24,7 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({
-    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
+    "GT America": require("../assets/fonts/GT-America-Standard-Regular.otf"),
   });
   const [isAudioPlayerReady, setIsAudioPlayerReady] = useState(false)
 

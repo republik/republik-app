@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { Platform } from "react-native";
 import * as Linking from "expo-linking";
 
 import { useGlobalState } from "@/lib/GlobalState";
