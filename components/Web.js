@@ -18,7 +18,7 @@ import {
   BUILD_NUMBER,
 } from "../constants/constants";
 import { useGlobalState } from "../lib/GlobalState";
-// import NetworkError from './NetworkError'
+import NetworkError from './NetworkError'
 import Loader from "../components/Loader";
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
@@ -272,7 +272,6 @@ const Web = () => {
       });
     }
   };
-  console.log(APP_VERSION)
 
   return (
     <>
@@ -307,9 +306,9 @@ const Web = () => {
             }}
             startInLoadingState
             renderLoading={() => <Loader loading />}
-            // renderError={() => (
-            //   <NetworkError onReload={() => webviewRef.current.reload()} />
-            // )}
+            renderError={() => (
+              <NetworkError onReload={() => webviewRef.current.reload()} />
+            )}
             // stripe url's are included to enable prolong
             // delete once shop.republik.ch is live
             originWhitelist={[
