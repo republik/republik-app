@@ -47,3 +47,7 @@ app-example
 # Fonts
 *.otf
 assets/fonts
+
+#Native folders
+android/
+ios/
