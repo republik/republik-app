@@ -31,6 +31,12 @@
           <string>app.republik</string>
         </array>
       </dict>
+      <dict>
+        <key>CFBundleURLSchemes</key>
+        <array>
+          <string>exp+republik-app</string>
+        </array>
+      </dict>
     </array>
     <key>CFBundleVersion</key>
     <string>400</string>
