@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "associatedDomains": ["applinks:republik.ch", "applinks:republik.ch"],
+      "associatedDomains": ["applinks:republik.ch", "applinks:www.republik.ch"],
       "bundleIdentifier": "app.republik",
       "buildNumber": "400",
       "infoPlist": {
