@@ -10,11 +10,16 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "associatedDomains": ["applinks:republik.ch", "applinks:www.republik.ch"],
+      "associatedDomains": [
+        "applinks:republik.ch",
+        "applinks:www.republik.ch"
+      ],
       "bundleIdentifier": "app.republik",
       "buildNumber": "400",
       "infoPlist": {
-        "UIBackgroundModes": ["audio"]
+        "UIBackgroundModes": [
+          "audio"
+        ]
       }
     },
     "android": {
@@ -35,7 +40,10 @@
               "pathPrefix": "/records"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ],
       "permissions": [
@@ -60,7 +68,8 @@
           },
           "imageWidth": 200
         }
-      ]
+      ],
+      "expo-router"
     ],
     "experiments": {
       "typedRoutes": true
