@@ -1,6 +1,6 @@
 {
   "name": "republik-app",
-  "main": "expo-router/entry",
+  "main": "app/_layout.tsx",
   "version": "2.3.0",
   "scripts": {
     "start": "expo start",
