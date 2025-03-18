@@ -79,13 +79,13 @@ const styles = StyleSheet.create({
     fontSize: 24,
     textAlign: "center",
     marginBottom: 20,
-    fontFamily: "GT America",
+    fontFamily: "GTAmerica-Regular",
   },
   errorText: {
     fontSize: 20,
     textAlign: "center",
     marginBottom: 20,
-    fontFamily: "GT America",
+    fontFamily: "GTAmerica-Regular",
   },
   button: {
     paddingVertical: 10,

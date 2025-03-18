@@ -1,4 +1,3 @@
-import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
@@ -23,16 +22,12 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    "GT America": require("../assets/fonts/GT-America-Standard-Regular.otf"),
-  });
+
   const [isAudioPlayerReady, setIsAudioPlayerReady] = useState(false)
 
   useEffect(() => {
-    if (loaded) {
       SplashScreen.hideAsync();
-    }
-  }, [loaded]);
+  }, []);
 
   //Initialize the AudioPlayer
   useEffect(() => {
@@ -44,10 +39,6 @@ export default function RootLayout() {
       run()
     }
   }, [isAudioPlayerReady, setIsAudioPlayerReady])
-
-  if (!loaded) {
-    return null;
-  }
 
   return (
     <GlobalStateProvider>

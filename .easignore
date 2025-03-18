@@ -44,9 +44,9 @@ app-example
 .env.staging
 .env.production
 
-# Fonts
-*.otf
-assets/fonts
+# Fonts - exclude all fonts except GTAmerica-Regular.otf
+assets/fonts/*
+!assets/fonts/GTAmerica-Regular.otf
 
 #Native folders
 android/

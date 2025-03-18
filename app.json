@@ -12,14 +12,18 @@
       "supportsTablet": true,
       "associatedDomains": [
         "applinks:republik.ch",
+        "applinks:www.republik.ch",
+        "applinks:republik.ch",
         "applinks:www.republik.ch"
       ],
       "bundleIdentifier": "app.republik",
       "buildNumber": "400",
       "infoPlist": {
         "UIBackgroundModes": [
+          "audio",
           "audio"
-        ]
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -67,6 +71,12 @@
             "backgroundColor": "#000000"
           },
           "imageWidth": 200
+        }
+      ],
+      [
+        "expo-font",
+        {
+          "fonts": ["./assets/fonts/GTAmerica-Regular.otf"]
         }
       ],
       "expo-router"
