@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from "react";
 import { WebView, WebViewMessageEvent } from "react-native-webview";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from "expo-file-system";
 import {
   StyleSheet,
   Share,
@@ -21,8 +21,7 @@ import {
 import { useGlobalState } from "../lib/GlobalState";
 import NetworkError from "./NetworkError";
 import Loader from "./Loader";
-import { Colors } from "@/constants/Colors";
-import { useColorScheme } from "@/hooks/useColorScheme";
+import { useColorContext } from "@/lib/ColorContext";
 import WebViewEventEmitter from "@/lib/WebViewEventEmitter";
 
 // Based on react-native-webview injection for Android
@@ -48,34 +47,36 @@ const getLast = (array) => array[array.length - 1];
 const downloadFile = async (downloadUrl: string) => {
   try {
     // Get the filename from the URL
-    const filename = downloadUrl.split('/').pop();
+    const filename = downloadUrl.split("/").pop();
     // Create a path in the cache directory
     const fileUri = `${FileSystem.cacheDirectory}${filename}`;
-    
+
     // Download the file
     const downloadResumable = FileSystem.createDownloadResumable(
       downloadUrl,
       fileUri,
       {},
       (downloadProgress) => {
-        const progress = downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite;
+        const progress =
+          downloadProgress.totalBytesWritten /
+          downloadProgress.totalBytesExpectedToWrite;
         console.log(`Download progress: ${Math.round(progress * 100)}%`);
       }
     );
 
     const result = await downloadResumable.downloadAsync();
     if (!result) {
-      throw new Error('Download failed');
+      throw new Error("Download failed");
     }
-    console.log('File downloaded to:', result.uri);
-    
+    console.log("File downloaded to:", result.uri);
+
     // Share the downloaded file
     await Share.share({
       url: result.uri,
       title: filename,
     });
   } catch (error) {
-    console.error('Error downloading file:', error);
+    console.error("Error downloading file:", error);
   }
 };
 
@@ -97,7 +98,7 @@ const Web = () => {
   const webviewRef = useRef<WebView>(null);
   const [webUrl, setWebUrl] = useState();
   const [isReady, setIsReady] = useState(false);
-  const colorScheme = useColorScheme();
+  const { colors, colorSchemeKey } = useColorContext();
 
   const [history, setHistory] = useState<string[]>([]);
   const historyRef = useRef<string[]>();
@@ -124,10 +125,10 @@ const Web = () => {
       type: "postMessage",
       content: {
         type: "osColorScheme",
-        value: colorScheme,
+        value: colorSchemeKey,
       },
     });
-  }, [colorScheme, dispatch]);
+  }, [colorSchemeKey, dispatch]);
 
   // Capture Android back button press
   useEffect(() => {
@@ -324,8 +325,8 @@ const Web = () => {
             styles.webView,
             {
               backgroundColor: globalState.isFullscreen
-                ? Colors[colorScheme ?? "light"].fullScreenStatusBar
-                : Colors[colorScheme ?? "light"].default,
+                ? colors.fullScreenStatusBar
+                : colors.default,
             },
           ]}
           edges={["right", "left", "top"]}
@@ -381,7 +382,7 @@ const Web = () => {
             onFileDownload={({ nativeEvent: { downloadUrl } }) => {
               downloadFile(downloadUrl);
             }}
-            style={{ backgroundColor: Colors[colorScheme ?? "light"].default }}
+            style={{ backgroundColor: colors.default }}
           />
         </SafeAreaView>
       )}

@@ -2,13 +2,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 
-import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider,
-} from "@react-navigation/native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { useColorScheme } from "@/hooks/useColorScheme";
 import { GlobalStateProvider } from "@/lib/GlobalState";
 import DeepLinkingService from "@/lib/DeepLinking";
 import AppStateService from "@/lib/AppState";
@@ -17,13 +11,13 @@ import Web from "@/components/Web";
 import SetupAudioPlayerSerivce from "@/components/AudioPlayer/SetupAudioPlayerService";
 import HeadlessAudioPlayer from "@/components/AudioPlayer/HeadlessAudioPlayer";
 import TrackPlayer from "react-native-track-player";
+import { ColorContextProvider } from "@/lib/ColorContext";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 TrackPlayer.registerPlaybackService(() => require("../lib/PlaybackService.ts"));
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
 
   const [isAudioPlayerReady, setIsAudioPlayerReady] = useState(false);
 
@@ -48,15 +42,13 @@ export default function RootLayout() {
       <DeepLinkingService />
       <AppStateService />
       {/* <CookieService /> */}
-
-      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <SafeAreaProvider>
+      <SafeAreaProvider>
+        <ColorContextProvider>
+          <StatusBar animated translucent={true} />
           <Web />
-        </SafeAreaProvider>
-        <StatusBar animated translucent={true} />
-      </ThemeProvider>
-
-      {isAudioPlayerReady && <HeadlessAudioPlayer />}
+          {isAudioPlayerReady && <HeadlessAudioPlayer />}
+        </ColorContextProvider>
+      </SafeAreaProvider>
     </GlobalStateProvider>
   );
 }

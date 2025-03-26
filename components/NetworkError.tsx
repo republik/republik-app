@@ -1,36 +1,20 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Image } from "react-native";
-import { Colors } from "@/constants/Colors";
-import { useColorScheme } from "@/hooks/useColorScheme";
+import { useColorContext } from "@/lib/ColorContext";
 
-const NetworkError = ({ onReload }: { onReload: () => void }) => {
-  const colorScheme = useColorScheme();
+const NetworkError = ({ onReload }) => {
+  const { colors } = useColorContext();
 
   return (
-    <View
-      style={[
-        styles.container,
-        { backgroundColor: Colors[colorScheme ?? "light"].default },
-      ]}
-    >
+    <View style={[styles.container, { backgroundColor: colors.default }]}>
       <View style={styles.logo}>
         <Image source={require("../assets/images/republik_logo.png")} />
       </View>
       <View style={styles.errorContainer}>
-        <Text
-          style={[
-            styles.errorTitle,
-            { color: Colors[colorScheme ?? "light"].text },
-          ]}
-        >
+        <Text style={[styles.errorTitle, { color: colors.text }]}>
           Nicht verfügbar
         </Text>
-        <Text
-          style={[
-            styles.errorText,
-            { color: Colors[colorScheme ?? "light"].text },
-          ]}
-        >
+        <Text style={[styles.errorText, { color: colors.text }]}>
           Bitte prüfen Sie Ihre Internetverbindung.
         </Text>
         <TouchableOpacity onPress={onReload}>
@@ -38,9 +22,9 @@ const NetworkError = ({ onReload }: { onReload: () => void }) => {
             style={[
               styles.button,
               {
-                backgroundColor: Colors[colorScheme ?? "light"].default,
-                borderColor: Colors[colorScheme ?? "light"].text,
-                color: Colors[colorScheme ?? "light"].text,
+                backgroundColor: colors.default,
+                borderColor: colors.text,
+                color: colors.text,
               },
             ]}
           >
