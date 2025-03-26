@@ -193,12 +193,12 @@ const Web = () => {
       setGlobalState({ pendingUrl: null });
     } else if (!webUrl) {
       // if nothing is pending navigate to saved url
-      setWebUrl(
-        // handle env changes or illegal navigations
-        persistedState.url?.startsWith(FRONTEND_BASE_URL)
-          ? persistedState.url
-          : HOME_URL
-      );
+      const savedUrl = persistedState.url?.startsWith(FRONTEND_BASE_URL)
+        ? persistedState.url
+        : HOME_URL;
+
+      // Redirect to HOME_URL if the saved URL is a .asc file
+      setWebUrl(savedUrl.endsWith(".asc") ? HOME_URL : savedUrl);
     }
   }, [webUrl, globalState, persistedState, setGlobalState, dispatch]);
 
@@ -315,6 +315,7 @@ const Web = () => {
     const url = urlInput.startsWith(FRONTEND_BASE_URL)
       ? urlInput
       : `${FRONTEND_BASE_URL}${urlInput}`;
+
     // deduplicate
     // - called by onMessage routeChange and onNavigationStateChange
     //   - iOS triggers onNavigationStateChange for pushState in the web view
@@ -389,6 +390,7 @@ const Web = () => {
             automaticallyAdjustContentInsets={false}
             keyboardDisplayRequiresUserAction={false}
             mediaPlaybackRequiresUserAction={false}
+            allowsLinkPreview={true}
             scalesPageToFit={false}
             decelerationRate="normal"
             onRenderProcessGone={() => {
