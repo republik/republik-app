@@ -1,7 +1,8 @@
 import React, { useRef, useState, useEffect } from "react";
-import { WebView } from "react-native-webview";
+import { WebView, WebViewMessageEvent } from "react-native-webview";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import * as FileSystem from 'expo-file-system';
 import {
   StyleSheet,
   Share,
@@ -18,8 +19,8 @@ import {
   BUILD_NUMBER,
 } from "../constants/constants";
 import { useGlobalState } from "../lib/GlobalState";
-import NetworkError from './NetworkError'
-import Loader from "../components/Loader";
+import NetworkError from "./NetworkError";
+import Loader from "./Loader";
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import WebViewEventEmitter from "@/lib/WebViewEventEmitter";
@@ -44,6 +45,40 @@ const generateMessageJS = (data) => {
 
 const getLast = (array) => array[array.length - 1];
 
+const downloadFile = async (downloadUrl: string) => {
+  try {
+    // Get the filename from the URL
+    const filename = downloadUrl.split('/').pop();
+    // Create a path in the cache directory
+    const fileUri = `${FileSystem.cacheDirectory}${filename}`;
+    
+    // Download the file
+    const downloadResumable = FileSystem.createDownloadResumable(
+      downloadUrl,
+      fileUri,
+      {},
+      (downloadProgress) => {
+        const progress = downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite;
+        console.log(`Download progress: ${Math.round(progress * 100)}%`);
+      }
+    );
+
+    const result = await downloadResumable.downloadAsync();
+    if (!result) {
+      throw new Error('Download failed');
+    }
+    console.log('File downloaded to:', result.uri);
+    
+    // Share the downloaded file
+    await Share.share({
+      url: result.uri,
+      title: filename,
+    });
+  } catch (error) {
+    console.error('Error downloading file:', error);
+  }
+};
+
 const styles = StyleSheet.create({
   webView: {
     flex: 1,
@@ -59,21 +94,21 @@ const Web = () => {
     pendingMessages,
     dispatch,
   } = useGlobalState();
-  const webviewRef = useRef();
+  const webviewRef = useRef<WebView>(null);
   const [webUrl, setWebUrl] = useState();
   const [isReady, setIsReady] = useState(false);
   const colorScheme = useColorScheme();
 
-  const [history, setHistory] = useState([]);
-  const historyRef = useRef();
+  const [history, setHistory] = useState<string[]>([]);
+  const historyRef = useRef<string[]>();
   historyRef.current = history;
 
   const { appState } = globalState;
-  const [didCrash, setDidCrash] = useState();
+  const [didCrash, setDidCrash] = useState<boolean | undefined>();
 
   useEffect(() => {
     console.log(appState, didCrash);
-    if (didCrash && appState === "active") {
+    if (didCrash && appState === "active" && webviewRef.current) {
       webviewRef.current.reload();
       setDidCrash(false);
     }
@@ -101,11 +136,14 @@ const Web = () => {
     }
     const backAction = () => {
       const currentHistory = historyRef.current;
-      if (currentHistory.length === 1 && getLast(currentHistory) === HOME_URL) {
+      if (
+        currentHistory?.length === 1 &&
+        getLast(currentHistory) === HOME_URL
+      ) {
         BackHandler.exitApp();
         return false;
       }
-      if (currentHistory.length) {
+      if (currentHistory?.length) {
         dispatch({
           type: "postMessage",
           content: {
@@ -121,7 +159,7 @@ const Web = () => {
     };
     BackHandler.addEventListener("hardwareBackPress", backAction);
     return () => {
-      BackHandler.removeEventListener("hardwareBackPress");
+      BackHandler.removeEventListener("hardwareBackPress", backAction);
     };
   }, [setGlobalState, dispatch]);
 
@@ -168,7 +206,7 @@ const Web = () => {
       return;
     }
     devLog("postMessage", message);
-    webviewRef.current.injectJavaScript(generateMessageJS(message));
+    webviewRef.current?.injectJavaScript(generateMessageJS(message));
     dispatch({
       type: "markMessage",
       id: message.id,
@@ -183,8 +221,13 @@ const Web = () => {
     }, 5 * 1000);
   }, [isReady, pendingMessages, dispatch]);
 
-  const onMessage = (e) => {
-    const message = JSON.parse(e.nativeEvent.data) || {};
+  const onMessage = (e: WebViewMessageEvent) => {
+    const message: {
+      type: string;
+      id: string;
+      colorSchemeKey?: string;
+      payload: any;
+    } = JSON.parse(e.nativeEvent.data) || {};
     devLog("onMessage", message);
     switch (message.type) {
       case "routeChange":
@@ -277,13 +320,15 @@ const Web = () => {
     <>
       {webUrl && (
         <SafeAreaView
-          style={styles.webView}
+          style={[
+            styles.webView,
+            {
+              backgroundColor: globalState.isFullscreen
+                ? Colors[colorScheme ?? "light"].fullScreenStatusBar
+                : Colors[colorScheme ?? "light"].default,
+            },
+          ]}
           edges={["right", "left", "top"]}
-          backgroundColor={
-            globalState.isFullscreen
-              ? Colors[colorScheme ?? "light"].fullScreenStatusBar
-              : Colors[colorScheme ?? "light"].default
-          }
         >
           <WebView
             ref={webviewRef}
@@ -307,7 +352,7 @@ const Web = () => {
             startInLoadingState
             renderLoading={() => <Loader loading />}
             renderError={() => (
-              <NetworkError onReload={() => webviewRef.current.reload()} />
+              <NetworkError onReload={() => webviewRef.current?.reload()} />
             )}
             // stripe url's are included to enable prolong
             // delete once shop.republik.ch is live
@@ -332,6 +377,9 @@ const Web = () => {
             }}
             onContentProcessDidTerminate={() => {
               setDidCrash(true);
+            }}
+            onFileDownload={({ nativeEvent: { downloadUrl } }) => {
+              downloadFile(downloadUrl);
             }}
             style={{ backgroundColor: Colors[colorScheme ?? "light"].default }}
           />
