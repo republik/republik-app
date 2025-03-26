@@ -2,7 +2,7 @@ import React from "react";
 import { View, ActivityIndicator, StyleSheet } from "react-native";
 import { useColorContext } from "@/lib/ColorContext";
 
-const Loader = ({ loading }) => {
+const Loader = ({ loading }: { loading: boolean }) => {
   const { colors } = useColorContext()
   return (
     <View style={[styles.container, { backgroundColor: colors.default }]}>

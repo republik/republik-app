@@ -32,18 +32,18 @@ const ColorContext = React.createContext({
   colorSchemeKey: 'light',
 })
 
-export const ColorContextProvider = ({ children }) => {
+export const ColorContextProvider = ({ children }: { children: React.ReactNode }) => {
   const [colorScheme, setColorScheme] = useState(() =>
     Appearance.getColorScheme(),
   )
 
   useEffect(() => {
-    const onChange = (preferences) => {
+    const onChange = (preferences: Appearance.AppearancePreferences) => {
       setColorScheme(preferences.colorScheme)
     }
-    Appearance.addChangeListener(onChange)
+    const appearanceSubscription = Appearance.addChangeListener(onChange)
     return () => {
-      Appearance.removeChangeListener(onChange)
+      appearanceSubscription.remove()
     }
   }, [])
 

@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Image } from "react-native";
 import { useColorContext } from "@/lib/ColorContext";
 
-const NetworkError = ({ onReload }) => {
+const NetworkError = ({ onReload }: { onReload: () => void }) => {
   const { colors } = useColorContext();
 
   return (

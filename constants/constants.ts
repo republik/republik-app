@@ -4,7 +4,7 @@ import { parse, format } from 'url'
 
 // support Android Emulator
 // https://stackoverflow.com/questions/4336394/webview-and-localhost
-const rewriteHost = (value) => {
+const rewriteHost = (value: string) => {
   if (process.env.EXPO_PUBLIC_ENV === "development" && value) {
     return Platform.select({
       ios: value,
@@ -25,7 +25,7 @@ export const FRONTEND_BASE_URL = rewriteHost(
   process.env.EXPO_PUBLIC_FRONTEND_BASE_URL
 );
 export const frontendBaseUrl = parse(FRONTEND_BASE_URL);
-export const rewriteBaseUrl = (url) => {
+export const rewriteBaseUrl = (url: string) => {
   const originUrl = parse(url);
   originUrl.host = frontendBaseUrl.host;
   originUrl.protocol = frontendBaseUrl.protocol;
