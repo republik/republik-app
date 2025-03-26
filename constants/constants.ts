@@ -4,15 +4,15 @@ import { parse, format } from 'url'
 
 // support Android Emulator
 // https://stackoverflow.com/questions/4336394/webview-and-localhost
-const rewriteHost = (value: string) => {
+const rewriteHost = (value: string | undefined): string => {
   if (process.env.EXPO_PUBLIC_ENV === "development" && value) {
     return Platform.select({
       ios: value,
       android: value.replace("localhost", "10.0.2.2"),
-    });
+    }) ?? value;
   }
 
-  return value;
+  return value ?? 'https://www.republik.ch';
 };
 
 export const devLog =

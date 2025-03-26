@@ -9,6 +9,7 @@ import {
   Platform,
   BackHandler,
   StatusBar,
+  ShareContent,
 } from "react-native";
 
 import {
@@ -18,7 +19,7 @@ import {
   devLog,
   BUILD_NUMBER,
 } from "../constants/constants";
-import { useGlobalState } from "../lib/GlobalState";
+import { useGlobalState, Message } from "../lib/GlobalState";
 import NetworkError from "./NetworkError";
 import Loader from "./Loader";
 import { useColorContext } from "@/lib/ColorContext";
@@ -26,7 +27,7 @@ import WebViewEventEmitter from "@/lib/WebViewEventEmitter";
 
 // Based on react-native-webview injection for Android
 // https://github.com/react-native-webview/react-native-webview/blob/194c6a2335b12cc05283413c44d0948eb5156e02/android/src/main/java/com/reactnativecommunity/webview/RNCWebViewManager.java#L651-L670
-const generateMessageJS = (data) => {
+const generateMessageJS = (data: Message) => {
   return [
     "(function(){",
     "var event;",
@@ -42,7 +43,7 @@ const generateMessageJS = (data) => {
   ].join("");
 };
 
-const getLast = (array) => array[array.length - 1];
+const getLast = (array: string[]) => array[array.length - 1];
 
 const downloadFile = async (downloadUrl: string) => {
   try {
@@ -158,9 +159,12 @@ const Web = () => {
       setGlobalState({ pendingUrl: HOME_URL });
       return true;
     };
-    const subscription = BackHandler.addEventListener("hardwareBackPress", backAction);
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction
+    );
     return () => {
-      subscription.remove()
+      subscription.remove();
     };
   }, [setGlobalState, dispatch]);
 
@@ -271,29 +275,43 @@ const Web = () => {
     }
   };
 
-  const share = async ({ url, title, message, subject, dialogTitle }) => {
+  const share = async ({
+    url,
+    title,
+    message,
+    subject,
+    dialogTitle,
+  }: {
+    url: string;
+    title: string;
+    message: string;
+    subject: string;
+    dialogTitle: string;
+  }) => {
     try {
       await Share.share(
         Platform.OS === "ios"
           ? {
               url,
               title,
-              subject,
               message,
             }
           : {
-              dialogTitle,
               title,
               message: [message, url].filter(Boolean).join("\n"),
-            }
+            },
+        {
+          dialogTitle,
+          subject,
+        }
       );
     } catch (error) {
       // eslint-disable-next-line no-alert
-      alert(error.message);
+      alert(error instanceof Error ? error.message : "An error occurred");
     }
   };
 
-  const onNavigationStateChange = ({ url: urlInput }) => {
+  const onNavigationStateChange = ({ url: urlInput }: { url: string }) => {
     const url = urlInput.startsWith(FRONTEND_BASE_URL)
       ? urlInput
       : `${FRONTEND_BASE_URL}${urlInput}`;

@@ -10,7 +10,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Crypto from "expo-crypto";
 
 
-interface Message {
+export interface Message {
   type: "postMessage" | "clearMessage" | "markMessage";
   content?: Record<string, any>;
   id?: string;
