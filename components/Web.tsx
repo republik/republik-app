@@ -9,7 +9,6 @@ import {
   Platform,
   BackHandler,
   StatusBar,
-  ShareContent,
 } from "react-native";
 
 import {
@@ -193,12 +192,11 @@ const Web = () => {
       setGlobalState({ pendingUrl: null });
     } else if (!webUrl) {
       // if nothing is pending navigate to saved url
-      const savedUrl = persistedState.url?.startsWith(FRONTEND_BASE_URL)
-        ? persistedState.url
-        : HOME_URL;
-
-      // Redirect to HOME_URL if the saved URL is a .asc file
-      setWebUrl(savedUrl.endsWith(".asc") ? HOME_URL : savedUrl);
+      setWebUrl(
+        persistedState.url?.startsWith(FRONTEND_BASE_URL)
+          ? persistedState.url
+          : HOME_URL
+      );
     }
   }, [webUrl, globalState, persistedState, setGlobalState, dispatch]);
 
@@ -324,7 +322,10 @@ const Web = () => {
     //   - for all route changes via pendingUrl
     //   - e.g. notifications & link opening
     if (url !== persistedState.url) {
-      setPersistedState({ url });
+      // If url has file extensions, keep the previous URL in persisted state
+      setPersistedState({
+        url: /\.[a-zA-Z0-9]+$/.test(url) ? persistedState.url : url,
+      });
     }
     if (getLast(history) !== url) {
       setHistory((currentHistory) => {
