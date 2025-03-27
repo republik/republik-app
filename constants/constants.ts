@@ -35,8 +35,6 @@ export const rewriteBaseUrl = (url: string) => {
 
 // App paths
 export const HOME_PATH = "/";
-export const CURTAIN_BACKDOOR_PATH =
-  process.env.EXPO_PUBLIC_CURTAIN_BACKDOOR_PATH;
 
 // App urls
 export const HOME_URL = `${FRONTEND_BASE_URL}${HOME_PATH}`;
