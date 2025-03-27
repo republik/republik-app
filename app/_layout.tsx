@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GlobalStateProvider } from "@/lib/GlobalState";
-import DeepLinkingService from "@/lib/DeepLinking";
-import AppStateService from "@/lib/AppState";
-import PushService from "@/lib/Push";
+import DeepLinkingService from "@/services/DeepLinkingService";
+import AppStateService from "@/services/AppStateService";
+import PushService from "@/services/PushService";
 import Web from "@/components/Web";
 import SetupAudioPlayerSerivce from "@/components/AudioPlayer/SetupAudioPlayerService";
 import HeadlessAudioPlayer from "@/components/AudioPlayer/HeadlessAudioPlayer";
@@ -15,7 +15,7 @@ import { ColorContextProvider } from "@/lib/ColorContext";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
-TrackPlayer.registerPlaybackService(() => require("../lib/PlaybackService.ts"));
+TrackPlayer.registerPlaybackService(() => require("../services/PlaybackService.ts"));
 
 export default function RootLayout() {
 
