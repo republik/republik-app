@@ -93,7 +93,7 @@ const Web = () => {
     persistedState,
     setPersistedState,
     pendingMessages,
-    dispatch,
+    dispatch
   } = useGlobalState();
   const webviewRef = useRef<WebView>(null);
   const [webUrl, setWebUrl] = useState();
@@ -323,10 +323,17 @@ const Web = () => {
     //   - e.g. notifications & link opening
     if (url !== persistedState.url) {
       // If url has file extensions, keep the previous URL in persisted state
-      setPersistedState({
-        url: /\.[a-zA-Z0-9]+$/.test(url) ? persistedState.url : url,
-      });
+      const shouldPersist = !/\.[a-zA-Z0-9]+$/.test(url);
+      if (shouldPersist) {
+        // Just persist the URL - writes are now always immediate
+        setPersistedState({ url }).then(success => {
+          if (!success) {
+            console.warn("Failed to persist navigation state");
+          }
+        });
+      }
     }
+    
     if (getLast(history) !== url) {
       setHistory((currentHistory) => {
         if (getLast(currentHistory) === url) {
