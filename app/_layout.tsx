@@ -8,14 +8,12 @@ import DeepLinkingService from "@/services/DeepLinkingService";
 import AppStateService from "@/services/AppStateService";
 import PushService from "@/services/PushService";
 import Web from "@/components/Web";
-import SetupAudioPlayerSerivce from "@/components/AudioPlayer/SetupAudioPlayerService";
+import SetupAudioPlayerService from "@/components/AudioPlayer/SetupAudioPlayerService";
 import HeadlessAudioPlayer from "@/components/AudioPlayer/HeadlessAudioPlayer";
-import TrackPlayer from "react-native-track-player";
 import { ColorContextProvider } from "@/lib/ColorContext";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
-TrackPlayer.registerPlaybackService(() => require("../services/PlaybackService.ts"));
 
 export default function RootLayout() {
 
@@ -28,7 +26,7 @@ export default function RootLayout() {
   //Initialize the AudioPlayer
   useEffect(() => {
     const run = async () => {
-      const nextReadyState = await SetupAudioPlayerSerivce();
+      const nextReadyState = await SetupAudioPlayerService();
       setIsAudioPlayerReady(nextReadyState);
     };
     if (!isAudioPlayerReady) {
