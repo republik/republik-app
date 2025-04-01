@@ -8,7 +8,6 @@ const AppStateService = () => {
     globalState: { appState },
     setGlobalState,
     dispatch,
-    persistedState,
     setPersistedState
   } = useGlobalState();
   
