@@ -2,7 +2,6 @@ import { useEffect, useRef } from "react";
 import { Platform } from "react-native";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
-import Constants from "expo-constants";
 
 import { useGlobalState } from "@/lib/GlobalState";
 import { APP_VERSION, rewriteBaseUrl, devLog } from "@/constants/constants";
@@ -16,8 +15,8 @@ Notifications.setNotificationHandler({
 });
 
 function handleRegistrationError(errorMessage: string) {
-  alert(errorMessage);
-  throw new Error(errorMessage);
+  console.warn(errorMessage);
+  return null;
 }
 
 async function registerForPushNotificationsAsync() {
@@ -31,8 +30,7 @@ async function registerForPushNotificationsAsync() {
   }
 
   if (Device.isDevice) {
-    const { status: existingStatus } =
-      await Notifications.getPermissionsAsync();
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
     if (existingStatus !== "granted") {
       const { status } = await Notifications.requestPermissionsAsync();
@@ -42,27 +40,19 @@ async function registerForPushNotificationsAsync() {
       handleRegistrationError(
         "Permission not granted to get push token for push notification!"
       );
-      return;
-    }
-    const projectId =
-      Constants?.expoConfig?.extra?.eas?.projectId ??
-      Constants?.easConfig?.projectId;
-    if (!projectId) {
-      handleRegistrationError("Project ID not found");
+      return null;
     }
     try {
-      const pushTokenString = (
-        await Notifications.getExpoPushTokenAsync({
-          projectId,
-        })
-      ).data;
-      console.log(pushTokenString);
+      const { data: pushTokenString } = await Notifications.getDevicePushTokenAsync();
+      console.log('Push token registered:', pushTokenString);
       return pushTokenString;
     } catch (e: unknown) {
-      handleRegistrationError(`${e}`);
+      handleRegistrationError(`Push token registration failed: ${e}`);
+      return null;
     }
   } else {
     handleRegistrationError("Must use physical device for push notifications");
+    return null;
   }
 }
 
@@ -96,7 +86,7 @@ const PushService = () => {
       }
     };
 
-    // Hanldes if App is woken up from terminated state by a push notification
+    // Handles if App is woken up from terminated state by a push notification
     if (
       lastNotificationResponse &&
       lastNotificationResponse.notification.request.content.data
@@ -104,30 +94,30 @@ const PushService = () => {
       onNotificationOpened(
         lastNotificationResponse.notification.request.content.data
       );
-    } else {
-      console.error("getInitialNotification");
     }
 
     setGlobalState({ pushReady: true });
 
     registerForPushNotificationsAsync()
       .then((token) => {
-        dispatch({
-          type: "postMessage",
-          content: {
-            type: "onPushRegistered",
-            data: {
-              token: token,
-              os: Platform.OS,
-              osVersion: Platform.Version,
-              brand: Device.brand,
-              model: Device.modelName,
-              deviceId: Device.modelId,
-              appVersion: APP_VERSION,
-              userAgent: `${Device} RepublikApp/${APP_VERSION}`,
+        if (token) {
+          dispatch({
+            type: "postMessage",
+            content: {
+              type: "onPushRegistered",
+              data: {
+                token: token,
+                os: Platform.OS,
+                osVersion: Platform.Version,
+                brand: Device.brand,
+                model: Device.modelName,
+                deviceId: Device.modelId,
+                appVersion: APP_VERSION,
+                userAgent: `${Device} RepublikApp/${APP_VERSION}`,
+              },
             },
-          },
-        });
+          });
+        }
       })
       .catch((error: any) => console.warn(error));
 
