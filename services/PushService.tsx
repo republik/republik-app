@@ -56,6 +56,8 @@ async function registerForPushNotificationsAsync() {
   }
 }
 
+
+
 const PushService = () => {
   const {
     persistedState: { isSignedIn },
@@ -67,33 +69,23 @@ const PushService = () => {
   const notificationListener = useRef<Notifications.EventSubscription>();
   const responseListener = useRef<Notifications.EventSubscription>();
 
+  const onNotificationOpened = (payload: Record<string, any>) => {
+    if (payload?.type === "authorization") {
+      // authorization only doesn't trigger navigation
+      // webview listens to appstate and triggers login overlay
+      return;
+    }
+    if (payload.url) {
+      setGlobalState({
+        pendingUrl: rewriteBaseUrl(payload.url),
+      });
+    }
+  };
+
   useEffect(() => {
     if (!isSignedIn) {
       setGlobalState({ pushReady: true });
       return;
-    }
-
-    const onNotificationOpened = (payload: Record<string, any>) => {
-      if (payload?.type === "authorization") {
-        // authorization only doesn't trigger navigation
-        // webview listens to appstate and triggers login overlay
-        return;
-      }
-      if (payload.url) {
-        setGlobalState({
-          pendingUrl: rewriteBaseUrl(payload.url),
-        });
-      }
-    };
-
-    // Handles if App is woken up from terminated state by a push notification
-    if (
-      lastNotificationResponse &&
-      lastNotificationResponse.notification.request.content.data
-    ) {
-      onNotificationOpened(
-        lastNotificationResponse.notification.request.content.data
-      );
     }
 
     setGlobalState({ pushReady: true });
@@ -149,7 +141,20 @@ const PushService = () => {
       responseListener.current &&
         Notifications.removeNotificationSubscription(responseListener.current);
     };
-  }, [isSignedIn, dispatch, setGlobalState, lastNotificationResponse]);
+  }, [isSignedIn, dispatch, setGlobalState]);
+
+  useEffect(() => {
+    // Handles if App is woken up from terminated state by a push notification
+    if (
+      lastNotificationResponse &&
+      lastNotificationResponse.notification.request.content.data.url &&
+      lastNotificationResponse.actionIdentifier === Notifications.DEFAULT_ACTION_IDENTIFIER
+    ) {
+      onNotificationOpened(
+        lastNotificationResponse.notification.request.content.data
+      );
+    }
+  }, [lastNotificationResponse]);
 
   return null;
 };
