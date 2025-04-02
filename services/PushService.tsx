@@ -69,15 +69,19 @@ const PushService = () => {
   const notificationListener = useRef<Notifications.EventSubscription>();
   const responseListener = useRef<Notifications.EventSubscription>();
 
-  const onNotificationOpened = (payload: Record<string, any>) => {
-    if (payload?.type === "authorization") {
+  const onNotificationOpened = (data: Record<string, any>) => {
+    if (!data) {
+      return;
+    }
+    
+    if (data.type === "authorization") {
       // authorization only doesn't trigger navigation
       // webview listens to appstate and triggers login overlay
       return;
     }
-    if (payload.url) {
+    if (data.url) {
       setGlobalState({
-        pendingUrl: rewriteBaseUrl(payload.url),
+        pendingUrl: rewriteBaseUrl(data.url),
       });
     }
   };
@@ -147,7 +151,7 @@ const PushService = () => {
     // Handles if App is woken up from terminated state by a push notification
     if (
       lastNotificationResponse &&
-      lastNotificationResponse.notification.request.content.data.url &&
+      lastNotificationResponse.notification.request.content.data &&
       lastNotificationResponse.actionIdentifier === Notifications.DEFAULT_ACTION_IDENTIFIER
     ) {
       onNotificationOpened(
