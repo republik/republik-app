@@ -6,14 +6,6 @@ import * as Notifications from "expo-notifications";
 import { useGlobalState } from "@/lib/GlobalState";
 import { APP_VERSION, rewriteBaseUrl, devLog } from "@/constants/constants";
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
-
 function handleRegistrationError(errorMessage: string) {
   console.warn(errorMessage);
   return null;
@@ -119,13 +111,13 @@ const PushService = () => {
 
     notificationListener.current =
       Notifications.addNotificationReceivedListener((notification) => {
-        const payload = notification.request.content.data;
-        if (payload?.type === "authorization") {
+        const data = notification.request.content.data;
+        if (data?.type === "authorization") {
           dispatch({
             type: "postMessage",
             content: {
               type: "authorization",
-              url: payload.url,
+              url: data.url,
             },
           });
           return;
