@@ -2,22 +2,13 @@ import { useEffect, useRef } from "react";
 import { Platform } from "react-native";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
-import Constants from "expo-constants";
 
 import { useGlobalState } from "@/lib/GlobalState";
 import { APP_VERSION, rewriteBaseUrl, devLog } from "@/constants/constants";
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
-
 function handleRegistrationError(errorMessage: string) {
-  alert(errorMessage);
-  throw new Error(errorMessage);
+  console.warn(errorMessage);
+  return null;
 }
 
 async function registerForPushNotificationsAsync() {
@@ -31,8 +22,7 @@ async function registerForPushNotificationsAsync() {
   }
 
   if (Device.isDevice) {
-    const { status: existingStatus } =
-      await Notifications.getPermissionsAsync();
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
     if (existingStatus !== "granted") {
       const { status } = await Notifications.requestPermissionsAsync();
@@ -42,29 +32,23 @@ async function registerForPushNotificationsAsync() {
       handleRegistrationError(
         "Permission not granted to get push token for push notification!"
       );
-      return;
-    }
-    const projectId =
-      Constants?.expoConfig?.extra?.eas?.projectId ??
-      Constants?.easConfig?.projectId;
-    if (!projectId) {
-      handleRegistrationError("Project ID not found");
+      return null;
     }
     try {
-      const pushTokenString = (
-        await Notifications.getExpoPushTokenAsync({
-          projectId,
-        })
-      ).data;
-      console.log(pushTokenString);
+      const { data: pushTokenString } = await Notifications.getDevicePushTokenAsync();
+      console.log('Push token registered:', pushTokenString);
       return pushTokenString;
     } catch (e: unknown) {
-      handleRegistrationError(`${e}`);
+      handleRegistrationError(`Push token registration failed: ${e}`);
+      return null;
     }
   } else {
     handleRegistrationError("Must use physical device for push notifications");
+    return null;
   }
 }
+
+
 
 const PushService = () => {
   const {
@@ -77,69 +61,63 @@ const PushService = () => {
   const notificationListener = useRef<Notifications.EventSubscription>();
   const responseListener = useRef<Notifications.EventSubscription>();
 
+  const onNotificationOpened = (data: Record<string, any>) => {
+    if (!data) {
+      return;
+    }
+    
+    if (data.type === "authorization") {
+      // authorization only doesn't trigger navigation
+      // webview listens to appstate and triggers login overlay
+      return;
+    }
+    if (data.url) {
+      setGlobalState({
+        pendingUrl: rewriteBaseUrl(data.url),
+      });
+    }
+  };
+
   useEffect(() => {
     if (!isSignedIn) {
       setGlobalState({ pushReady: true });
       return;
     }
 
-    const onNotificationOpened = (payload: Record<string, any>) => {
-      if (payload?.type === "authorization") {
-        // authorization only doesn't trigger navigation
-        // webview listens to appstate and triggers login overlay
-        return;
-      }
-      if (payload.url) {
-        setGlobalState({
-          pendingUrl: rewriteBaseUrl(payload.url),
-        });
-      }
-    };
-
-    // Hanldes if App is woken up from terminated state by a push notification
-    if (
-      lastNotificationResponse &&
-      lastNotificationResponse.notification.request.content.data
-    ) {
-      onNotificationOpened(
-        lastNotificationResponse.notification.request.content.data
-      );
-    } else {
-      console.error("getInitialNotification");
-    }
-
     setGlobalState({ pushReady: true });
 
     registerForPushNotificationsAsync()
       .then((token) => {
-        dispatch({
-          type: "postMessage",
-          content: {
-            type: "onPushRegistered",
-            data: {
-              token: token,
-              os: Platform.OS,
-              osVersion: Platform.Version,
-              brand: Device.brand,
-              model: Device.modelName,
-              deviceId: Device.modelId,
-              appVersion: APP_VERSION,
-              userAgent: `${Device} RepublikApp/${APP_VERSION}`,
+        if (token) {
+          dispatch({
+            type: "postMessage",
+            content: {
+              type: "onPushRegistered",
+              data: {
+                token: token,
+                os: Platform.OS,
+                osVersion: Platform.Version,
+                brand: Device.brand,
+                model: Device.modelName,
+                deviceId: Device.modelId,
+                appVersion: APP_VERSION,
+                userAgent: `${Device} RepublikApp/${APP_VERSION}`,
+              },
             },
-          },
-        });
+          });
+        }
       })
       .catch((error: any) => console.warn(error));
 
     notificationListener.current =
       Notifications.addNotificationReceivedListener((notification) => {
-        const payload = notification.request.content.data;
-        if (payload?.type === "authorization") {
+        const data = notification.request.content.data;
+        if (data?.type === "authorization") {
           dispatch({
             type: "postMessage",
             content: {
               type: "authorization",
-              url: payload.url,
+              url: data.url,
             },
           });
           return;
@@ -159,7 +137,20 @@ const PushService = () => {
       responseListener.current &&
         Notifications.removeNotificationSubscription(responseListener.current);
     };
-  }, [isSignedIn, dispatch, setGlobalState, lastNotificationResponse]);
+  }, [isSignedIn, dispatch, setGlobalState]);
+
+  useEffect(() => {
+    // Handles if App is woken up from terminated state by a push notification
+    if (
+      lastNotificationResponse &&
+      lastNotificationResponse.notification.request.content.data &&
+      lastNotificationResponse.actionIdentifier === Notifications.DEFAULT_ACTION_IDENTIFIER
+    ) {
+      onNotificationOpened(
+        lastNotificationResponse.notification.request.content.data
+      );
+    }
+  }, [lastNotificationResponse]);
 
   return null;
 };

@@ -24,7 +24,7 @@ interface PersistedState {
 interface GlobalStateContext {
   error: Error | undefined;
   persistedState: PersistedState;
-  setPersistedState: (newState: Partial<PersistedState>) => void;
+  setPersistedState: (newState: Partial<PersistedState>) => Promise<boolean>;
   globalState: Record<string, any>;
   setGlobalState: (newState: Record<string, any>) => void;
   pendingMessages: Message[];
@@ -47,17 +47,17 @@ export const useGlobalState = (): GlobalStateContext => {
 const KEY = "globalState";
 
 const readStore = async ({
-  setPersistedState,
+  setPersistedStateInternal,
   setGlobalState,
   setError,
 }: {
-  setPersistedState: (state: PersistedState) => void;
+  setPersistedStateInternal: (state: PersistedState) => void;
   setGlobalState: (state: Record<string, any>) => void;
   setError: (error: Error) => void;
 }) => {
   try {
     const storedState = JSON.parse((await AsyncStorage.getItem(KEY)) || "{}");
-    setPersistedState(storedState);
+    setPersistedStateInternal(storedState);
   } catch (e) {
     console.error("readStore", e);
     setError(e instanceof Error ? e : new Error("Unknown error occurred"));
@@ -71,12 +71,14 @@ const writeStore = async ({
 }: {
   persistedState: PersistedState;
   setError: (error: Error) => void;
-}) => {
+}): Promise<boolean> => {
   try {
     await AsyncStorage.setItem(KEY, JSON.stringify(persistedState));
+    return true;
   } catch (e) {
     console.error(e);
     setError(e instanceof Error ? e : new Error("Unknown error occurred"));
+    return false;
   }
 };
 
@@ -119,12 +121,25 @@ export const GlobalStateProvider: React.FC<GlobalStateProviderProps> = ({
   children,
 }) => {
   const [error, setError] = useState<Error | undefined>();
-
-  const [persistedState, setPersistedStateRaw] = useState<PersistedState>({});
+  const [persistedState, setPersistedStateInternal] = useState<PersistedState>({});
+  
   const setPersistedState = useCallback(
-    (newState: Partial<PersistedState>) =>
-      setPersistedStateRaw((state) => ({ ...state, ...newState })),
-    []
+    async (newState: Partial<PersistedState>): Promise<boolean> => {
+      const updatedState = { ...persistedState, ...newState };
+      setPersistedStateInternal(updatedState);
+      
+      // Always write immediately
+      try {
+        return await writeStore({
+          persistedState: updatedState,
+          setError,
+        });
+      } catch (e) {
+        console.error("State persistence failed:", e);
+        return false;
+      }
+    },
+    [persistedState]
   );
 
   const [globalState, setGlobalStateRaw] = useState<Record<string, any>>({});
@@ -138,18 +153,11 @@ export const GlobalStateProvider: React.FC<GlobalStateProviderProps> = ({
 
   useEffect(() => {
     readStore({
-      setPersistedState,
+      setPersistedStateInternal,
       setGlobalState,
       setError,
     });
-  }, [setGlobalState, setPersistedState]);
-
-  useEffect(() => {
-    writeStore({
-      persistedState,
-      setError,
-    });
-  }, [persistedState]);
+  }, [setGlobalState, setPersistedStateInternal]);
 
   const context: GlobalStateContext = {
     error,

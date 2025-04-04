@@ -2,6 +2,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 
+import * as Notifications from "expo-notifications";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GlobalStateProvider } from "@/lib/GlobalState";
 import DeepLinkingService from "@/services/DeepLinkingService";
@@ -14,6 +15,13 @@ import { ColorContextProvider } from "@/lib/ColorContext";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
 
 export default function RootLayout() {
 
@@ -39,7 +47,6 @@ export default function RootLayout() {
       <PushService />
       <DeepLinkingService />
       <AppStateService />
-      {/* <CookieService /> */}
       <SafeAreaProvider>
         <ColorContextProvider>
           <StatusBar animated translucent={true} />
