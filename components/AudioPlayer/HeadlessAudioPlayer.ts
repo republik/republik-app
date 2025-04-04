@@ -28,7 +28,6 @@ type AudioObject = {
 // Interval in ms to sync audio player state with web-ui.
 const SYNC_INTERVAL_WHILE_PLAYING = 500;
 const SYNC_INTERVAL_WHILE_CONNECTING = 1000;
-const PLAYBACK_ENDED_OFFSET = 3;
 
 /**
  * HeadlessAudioPlayer is a wrapper around expo-av Audio without any react-native UI.
@@ -130,8 +129,8 @@ const HeadlessAudioPlayer = ({}) => {
 
   // Monitor sound playback completion
   useEffect(() => {
-    if (playbackObject.current && activeTrack) {
-      playbackObject.current.setOnPlaybackStatusUpdate((status) => {
+    if (playbackObject.current) {
+      const onPlaybackStatusUpdate = (status: any) => {
         if (status.isLoaded) {
           // Update duration if it changed
           if (status.durationMillis && status.durationMillis / 1000 !== duration) {
@@ -152,10 +151,15 @@ const HeadlessAudioPlayer = ({}) => {
           
           // Handle playback completion
           if (status.didJustFinish && !status.isLooping) {
-            handleQueueAdvance(activeTrack.item.id);
+            handleQueueAdvance(activeTrack?.item.id || '');
           }
+
+          // Always sync with webview when status changes
+          syncStateWithWebUI();
         }
-      });
+      };
+
+      playbackObject.current.setOnPlaybackStatusUpdate(onPlaybackStatusUpdate);
       
       return () => {
         if (playbackObject.current) {
@@ -163,7 +167,7 @@ const HeadlessAudioPlayer = ({}) => {
         }
       };
     }
-  }, [playbackObject.current, activeTrack, duration, handleQueueAdvance]);
+  }, [playbackObject.current, duration, handleQueueAdvance, activeTrack, syncStateWithWebUI]);
 
   const handlePlay = useCallback(
     async (initialTime?: number) => {
@@ -214,11 +218,10 @@ const HeadlessAudioPlayer = ({}) => {
         await playbackObject.current.pauseAsync();
         setPlayerState(State.Paused);
       }
-      syncStateWithWebUI();
     } catch (error: any) {
       handleError(error);
     }
-  }, [syncStateWithWebUI, handleError]);
+  }, [handleError]);
 
   const handleStop = useCallback(async () => {
     try {

@@ -10,8 +10,8 @@ const SetupAudioPlayerService = async () => {
     await Audio.setAudioModeAsync({
       playsInSilentModeIOS: true,
       staysActiveInBackground: true,
-      interruptionModeIOS: Audio.INTERRUPTION_MODE_IOS_DO_NOT_MIX,
-      interruptionModeAndroid: Audio.INTERRUPTION_MODE_ANDROID_DO_NOT_MIX,
+      interruptionModeIOS: 1,
+      interruptionModeAndroid: 1,
       shouldDuckAndroid: false,
       playThroughEarpieceAndroid: false,
     });
