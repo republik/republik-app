@@ -192,6 +192,13 @@ const HeadlessAudioPlayer = ({}) => {
         }
 
         if (playbackObject.current) {
+          // Wait for sound to be loaded
+          let status = await playbackObject.current.getStatusAsync();
+          while (!status.isLoaded) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            status = await playbackObject.current.getStatusAsync();
+          }
+
           if (initialTime !== undefined) {
             await playbackObject.current.setPositionAsync(initialTime * 1000);
             setCurrentPosition(initialTime);
@@ -203,13 +210,11 @@ const HeadlessAudioPlayer = ({}) => {
           
           setPlayerState(State.Playing);
         }
-
-        syncStateWithWebUI();
       } catch (error: any) {
         handleError(error);
       }
     },
-    [syncStateWithWebUI, isInitialized, playbackRate, handleError]
+    [isInitialized, playbackRate, handleError]
   );
 
   const handlePause = useCallback(async () => {
@@ -232,11 +237,10 @@ const HeadlessAudioPlayer = ({}) => {
         playbackObject.current = null;
       }
       setPlayerState(State.Stopped);
-      syncStateWithWebUI();
     } catch (error: any) {
       handleError(error);
     }
-  }, [syncStateWithWebUI, handleError]);
+  }, [handleError]);
 
   const handleSeek = useCallback(
     async (payload: any) => {
@@ -250,12 +254,11 @@ const HeadlessAudioPlayer = ({}) => {
             initialTime: payload,
           };
         }
-        syncStateWithWebUI();
       } catch (error: any) {
         handleError(error);
       }
     },
-    [syncStateWithWebUI, isInitialized, handleError]
+    [isInitialized, handleError]
   );
 
   const handleForward = useCallback(
@@ -274,12 +277,11 @@ const HeadlessAudioPlayer = ({}) => {
             ),
           };
         }
-        syncStateWithWebUI();
       } catch (error: any) {
         handleError(error);
       }
     },
-    [syncStateWithWebUI, currentPosition, isInitialized, handleError]
+    [currentPosition, isInitialized, handleError]
   );
 
   const handleBackward = useCallback(
@@ -298,12 +300,11 @@ const HeadlessAudioPlayer = ({}) => {
             ),
           };
         }
-        syncStateWithWebUI();
       } catch (error: any) {
         handleError(error);
       }
     },
-    [syncStateWithWebUI, currentPosition, isInitialized, handleError]
+    [currentPosition, isInitialized, handleError]
   );
 
   const handlePlaybackRate = useCallback(
@@ -313,22 +314,11 @@ const HeadlessAudioPlayer = ({}) => {
         if (playbackObject.current) {
           await playbackObject.current.setRateAsync(payload, true);
         }
-        syncStateWithWebUI();
       } catch (error: any) {
         handleError(error);
       }
     },
-    [syncStateWithWebUI, handleError]
-  );
-
-  // Sync the state with the webview if in a playing or buffering state
-  useInterval(
-    () => syncStateWithWebUI(),
-    [State.Buffering, State.Playing].includes(playerState)
-      ? SYNC_INTERVAL_WHILE_PLAYING
-      : [State.Loading].includes(playerState)
-      ? SYNC_INTERVAL_WHILE_CONNECTING
-      : null
+    [handleError]
   );
 
   // Handle events from web-ui
@@ -406,8 +396,6 @@ const HeadlessAudioPlayer = ({}) => {
           setDuration(status.durationMillis / 1000);
         }
 
-        syncStateWithWebUI();
-        
         if (autoPlay) {
           await handlePlay(initialTime);
         } else if (initialTime) {
