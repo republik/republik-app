@@ -25,10 +25,6 @@ type AudioObject = {
   initialTime?: number;
 };
 
-// Interval in ms to sync audio player state with web-ui.
-const SYNC_INTERVAL_WHILE_PLAYING = 500;
-const SYNC_INTERVAL_WHILE_CONNECTING = 1000;
-
 /**
  * HeadlessAudioPlayer is a wrapper around expo-av Audio without any react-native UI.
  * The player is controlled through events received from the webview.
@@ -127,35 +123,53 @@ const HeadlessAudioPlayer = ({}) => {
     [notifyQueueAdvance]
   );
 
-  // Monitor sound playback completion
+  // Monitor sound playback completion and sync state with webview
+  // This effect sets up a listener for playback status updates that:
+  // 1. Updates internal state (position, duration, player state) in real-time
+  // 2. Handles playback completion immediately
+  // 3. Syncs position updates with webview at controlled intervals to prevent excessive updates
   useEffect(() => {
     if (playbackObject.current) {
+      let lastPositionSyncTime = 0;
+      const SYNC_INTERVAL_WHILE_PLAYING = 500; // Sync position at most every 500ms while playing
+
       const onPlaybackStatusUpdate = (status: any) => {
         if (status.isLoaded) {
+          // Real-time state updates
           // Update duration if it changed
           if (status.durationMillis && status.durationMillis / 1000 !== duration) {
             setDuration(status.durationMillis / 1000);
+            // Duration changes are rare, sync immediately
+            syncStateWithWebUI();
           }
-          
-          // Update position
-          setCurrentPosition(status.positionMillis / 1000);
           
           // Update player state
-          if (status.isPlaying) {
-            setPlayerState(State.Playing);
-          } else if (status.isBuffering) {
-            setPlayerState(State.Buffering);
-          } else {
-            setPlayerState(State.Paused);
+          const newState = status.isPlaying 
+            ? State.Playing 
+            : status.isBuffering 
+              ? State.Buffering 
+              : State.Paused;
+          
+          if (newState !== playerState) {
+            setPlayerState(newState);
+            // State changes should sync immediately
+            syncStateWithWebUI();
           }
           
-          // Handle playback completion
+          // Handle playback completion immediately
           if (status.didJustFinish && !status.isLooping) {
             handleQueueAdvance(activeTrack?.item.id || '');
           }
 
-          // Always sync with webview when status changes
-          syncStateWithWebUI();
+          // Update position
+          setCurrentPosition(status.positionMillis / 1000);
+
+          // but throttle position updates
+          const now = Date.now();
+          if (now - lastPositionSyncTime >= SYNC_INTERVAL_WHILE_PLAYING) {
+            syncStateWithWebUI();
+            lastPositionSyncTime = now;
+          }
         }
       };
 
@@ -167,7 +181,7 @@ const HeadlessAudioPlayer = ({}) => {
         }
       };
     }
-  }, [playbackObject.current, duration, handleQueueAdvance, activeTrack, syncStateWithWebUI]);
+  }, [playbackObject.current, duration, handleQueueAdvance, activeTrack, syncStateWithWebUI, playerState]);
 
   const handlePlay = useCallback(
     async (initialTime?: number) => {
