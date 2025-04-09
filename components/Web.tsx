@@ -178,6 +178,7 @@ const Web = () => {
     ) {
       return;
     }
+
     if (globalState.pendingUrl) {
       if (webUrl) {
         dispatch({
@@ -201,10 +202,12 @@ const Web = () => {
     }
   }, [webUrl, globalState, persistedState, setGlobalState, dispatch]);
 
+  // This effect handles sending queued messages
   useEffect(() => {
     if (!isReady) {
-      return;
+      return; // WebView not ready yet
     }
+
     const message = pendingMessages.filter((msg) => !msg.mark)[0];
     if (!message) {
       return;
@@ -352,12 +355,12 @@ const Web = () => {
       // If url has file extensions, keep the previous URL in persisted state
       const shouldPersist = !/\.[a-zA-Z0-9]+$/.test(url);
       if (shouldPersist) {
-        // Just persist the URL - writes are now always immediate
-        setPersistedState({ url }).then((success) => {
-          if (!success) {
-            console.warn("Failed to persist navigation state");
-          }
-        });
+        // Just persist the URL - call the synchronous function
+        const success = setPersistedState({ url });
+        // Check the boolean result directly
+        if (!success) {
+          console.warn("Failed to persist navigation state");
+        }
       }
     }
 

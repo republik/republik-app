@@ -6,9 +6,12 @@ import React, {
   useReducer,
   ReactNode,
 } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+// import AsyncStorage from "@react-native-async-storage/async-storage";
+import { MMKV } from 'react-native-mmkv'; // Import MMKV
 import * as Crypto from "expo-crypto";
 
+// Instantiate MMKV storage
+const storage = new MMKV();
 
 export interface Message {
   type: "postMessage" | "clearMessage" | "markMessage";
@@ -24,7 +27,7 @@ interface PersistedState {
 interface GlobalStateContext {
   error: Error | undefined;
   persistedState: PersistedState;
-  setPersistedState: (newState: Partial<PersistedState>) => Promise<boolean>;
+  setPersistedState: (newState: Partial<PersistedState>) => boolean;
   globalState: Record<string, any>;
   setGlobalState: (newState: Record<string, any>) => void;
   pendingMessages: Message[];
@@ -46,7 +49,8 @@ export const useGlobalState = (): GlobalStateContext => {
 
 const KEY = "globalState";
 
-const readStore = async ({
+// Updated readStore using MMKV
+const readStore = ({
   setPersistedStateInternal,
   setGlobalState,
   setError,
@@ -56,28 +60,30 @@ const readStore = async ({
   setError: (error: Error) => void;
 }) => {
   try {
-    const storedState = JSON.parse((await AsyncStorage.getItem(KEY)) || "{}");
+    const storedStateString = storage.getString(KEY);
+    const storedState = storedStateString ? JSON.parse(storedStateString) : {};
     setPersistedStateInternal(storedState);
   } catch (e) {
     console.error("readStore", e);
-    setError(e instanceof Error ? e : new Error("Unknown error occurred"));
+    setError(e instanceof Error ? e : new Error("Unknown error reading state"));
   }
   setGlobalState({ persistedStateReady: true });
 };
 
-const writeStore = async ({
+// Updated writeStore using MMKV
+const writeStore = ({
   persistedState,
   setError,
 }: {
   persistedState: PersistedState;
   setError: (error: Error) => void;
-}): Promise<boolean> => {
+}): boolean => { // Return boolean for consistency, although MMKV errors are less common here
   try {
-    await AsyncStorage.setItem(KEY, JSON.stringify(persistedState));
-    return true;
+    storage.set(KEY, JSON.stringify(persistedState));
+    return true; // Assume success if no error is thrown
   } catch (e) {
-    console.error(e);
-    setError(e instanceof Error ? e : new Error("Unknown error occurred"));
+    console.error("writeStore", e);
+    setError(e instanceof Error ? e : new Error("Unknown error writing state"));
     return false;
   }
 };
@@ -124,22 +130,24 @@ export const GlobalStateProvider: React.FC<GlobalStateProviderProps> = ({
   const [persistedState, setPersistedStateInternal] = useState<PersistedState>({});
   
   const setPersistedState = useCallback(
-    async (newState: Partial<PersistedState>): Promise<boolean> => {
+    (newState: Partial<PersistedState>): boolean => {
       const updatedState = { ...persistedState, ...newState };
       setPersistedStateInternal(updatedState);
-      
-      // Always write immediately
+      console.log("previous state", persistedState);
       try {
-        return await writeStore({
+        console.log("new persisted state", updatedState);
+        const success = writeStore({
           persistedState: updatedState,
           setError,
         });
+        return success;
       } catch (e) {
-        console.error("State persistence failed:", e);
+        console.error("State persistence failed in setPersistedState:", e);
+        setError(e instanceof Error ? e : new Error("Unknown error during persistence"));
         return false;
       }
     },
-    [persistedState]
+    [persistedState, setError]
   );
 
   const [globalState, setGlobalStateRaw] = useState<Record<string, any>>({});
