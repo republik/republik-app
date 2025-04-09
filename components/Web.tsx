@@ -107,9 +107,6 @@ const Web = () => {
   const { appState } = globalState;
   const [didCrash, setDidCrash] = useState<boolean | undefined>();
 
-  // Add a state to track if initial context has been sent
-  const [initialContextSent, setInitialContextSent] = useState(false);
-
   useEffect(() => {
     console.log(appState, didCrash);
     if (didCrash && appState === "active" && webviewRef.current) {
@@ -180,7 +177,7 @@ const Web = () => {
     ) {
       return;
     }
-    console.log("pendingurl, weburl", globalState.pendingUrl, webUrl);
+
     if (globalState.pendingUrl) {
       if (webUrl) {
         dispatch({
@@ -204,40 +201,17 @@ const Web = () => {
     }
   }, [webUrl, globalState, persistedState, setGlobalState, dispatch]);
 
-  // This effect handles sending queued messages AND the initial context
+  // This effect handles sending queued messages
   useEffect(() => {
     if (!isReady) {
       return; // WebView not ready yet
     }
 
-    // --- Send Initial Context ---
-    // Check if context needs to be sent and if persisted state is ready
-    if (!initialContextSent && globalState.persistedStateReady) {
-      console.log('Web.tsx: Sending initialContext to web app', {
-        isSignedIn: persistedState.isSignedIn,
-        // Include any other relevant state here
-      });
-      dispatch({
-        type: 'postMessage',
-        content: {
-          type: 'initialContext', // Define a new message type
-          payload: {
-            isSignedIn: persistedState.isSignedIn ?? false, // Send persisted signed-in status (provide a default)
-            // Add other critical persisted state pieces here if needed
-          },
-        },
-      });
-      setInitialContextSent(true); // Mark as sent
-    }
-    // --- End Send Initial Context ---
-
-
-    // --- Original Pending Message Logic ---
     const message = pendingMessages.filter((msg) => !msg.mark)[0];
     if (!message) {
       return;
     }
-    devLog('postMessage', message);
+    devLog("postMessage", message);
     webviewRef.current?.injectJavaScript(generateMessageJS(message));
     dispatch({
       type: "markMessage",
@@ -251,21 +225,7 @@ const Web = () => {
         mark: false,
       });
     }, 5 * 1000);
-    // --- End Original Pending Message Logic ---
-
-  }, [
-      isReady,
-      pendingMessages,
-      dispatch,
-      initialContextSent, // Add dependency
-      globalState.persistedStateReady, // Add dependency
-      persistedState.isSignedIn // Add dependency (or the whole persistedState)
-  ]);
-
-  // Reset initialContextSent if the webUrl changes (signifying a full reload)
-  useEffect(() => {
-      setInitialContextSent(false);
-  }, [webUrl]);
+  }, [isReady, pendingMessages, dispatch]);
 
   const onMessage = (e: WebViewMessageEvent) => {
     const message: {
@@ -365,7 +325,6 @@ const Web = () => {
     //   - for all route changes via pendingUrl
     //   - e.g. notifications & link opening
     if (url !== persistedState.url) {
-      console.log("onNavigationStateChange url has changed", url, persistedState.url);
       // If url has file extensions, keep the previous URL in persisted state
       const shouldPersist = !/\.[a-zA-Z0-9]+$/.test(url);
       if (shouldPersist) {
@@ -377,11 +336,8 @@ const Web = () => {
         }
       }
     }
-    console.log("onNavigationStateChange url hasn't changed", url);
-
 
     if (getLast(history) !== url) {
-      console.log("onNavigationStateChange history has changed", history, url);
       setHistory((currentHistory) => {
         if (getLast(currentHistory) === url) {
           return currentHistory;
