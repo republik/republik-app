@@ -10,6 +10,7 @@ import {
   BackHandler,
   StatusBar,
 } from "react-native";
+import ExternalLinkModule from "@/modules/external-link";
 
 import {
   APP_VERSION,
@@ -93,10 +94,10 @@ const Web = () => {
     persistedState,
     setPersistedState,
     pendingMessages,
-    dispatch
+    dispatch,
   } = useGlobalState();
   const webviewRef = useRef<WebView>(null);
-  const [webUrl, setWebUrl] = useState();
+  const [webUrl, setWebUrl] = useState<string | undefined>();
   const [isReady, setIsReady] = useState(false);
   const { colors, colorSchemeKey } = useColorContext();
 
@@ -266,6 +267,32 @@ const Web = () => {
           id: message.id,
         });
         break;
+      case "external-link":
+        if (Platform.OS !== "ios") {
+          console.warn("ExternalLinkAccount API is only available on iOS.");
+          break;
+        }
+        (async () => {
+          try {
+            const canOpen =
+              await ExternalLinkModule.canOpenExternalLinkHelper();
+            if (canOpen) {
+              const opened = await ExternalLinkModule.openExternalLinkHelper();
+              if (!opened) {
+                console.warn(
+                  "ExternalLinkModule.openExternalLinkHelper returned false (e.g., user cancelled)"
+                );
+              }
+            } else {
+              console.warn(
+                "ExternalLinkModule.canOpenExternalLinkHelper returned false"
+              );
+            }
+          } catch (error) {
+            console.error("Error using ExternalLinkModule:", error);
+          }
+        })();
+        break;
       default:
         // Forward to an EventEmitter to directly handle the event
         // in the respective component
@@ -326,14 +353,14 @@ const Web = () => {
       const shouldPersist = !/\.[a-zA-Z0-9]+$/.test(url);
       if (shouldPersist) {
         // Just persist the URL - writes are now always immediate
-        setPersistedState({ url }).then(success => {
+        setPersistedState({ url }).then((success) => {
           if (!success) {
             console.warn("Failed to persist navigation state");
           }
         });
       }
     }
-    
+
     if (getLast(history) !== url) {
       setHistory((currentHistory) => {
         if (getLast(currentHistory) === url) {

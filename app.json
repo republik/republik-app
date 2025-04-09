@@ -10,12 +10,19 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "associatedDomains": ["applinks:republik.ch", "applinks:www.republik.ch"],
+      "associatedDomains": [
+        "applinks:republik.ch",
+        "applinks:www.republik.ch",
+        "externallink:republik.ch"
+      ],
       "bundleIdentifier": "app.republik",
       "buildNumber": "400",
       "infoPlist": {
         "UIBackgroundModes": ["audio"],
         "ITSAppUsesNonExemptEncryption": false
+      },
+      "entitlements": {
+        "com.apple.developer.storekit.external-purchase-link": "true"
       }
     },
     "android": {
