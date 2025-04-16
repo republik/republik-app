@@ -2,15 +2,12 @@ import React, { useRef, useState, useEffect } from "react";
 import { WebView, WebViewMessageEvent } from "react-native-webview";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import * as FileSystem from "expo-file-system";
 import {
-  StyleSheet,
   Share,
   Platform,
   BackHandler,
   StatusBar,
 } from "react-native";
-import ExternalLinkModule from "@/modules/external-link";
 
 import {
   APP_VERSION,
@@ -24,6 +21,8 @@ import NetworkError from "./NetworkError";
 import Loader from "./Loader";
 import { useColorContext } from "@/lib/ColorContext";
 import WebViewEventEmitter from "@/lib/WebViewEventEmitter";
+import { downloadFile } from "../lib/downloadFile";
+import { handleExternalLink } from "../lib/handleExternalLink";
 
 // Based on react-native-webview injection for Android
 // https://github.com/react-native-webview/react-native-webview/blob/194c6a2335b12cc05283413c44d0948eb5156e02/android/src/main/java/com/reactnativecommunity/webview/RNCWebViewManager.java#L651-L670
@@ -44,48 +43,6 @@ const generateMessageJS = (data: Message) => {
 };
 
 const getLast = (array: string[]) => array[array.length - 1];
-
-const downloadFile = async (downloadUrl: string) => {
-  try {
-    // Get the filename from the URL
-    const filename = downloadUrl.split("/").pop();
-    // Create a path in the cache directory
-    const fileUri = `${FileSystem.cacheDirectory}${filename}`;
-
-    // Download the file
-    const downloadResumable = FileSystem.createDownloadResumable(
-      downloadUrl,
-      fileUri,
-      {},
-      (downloadProgress) => {
-        const progress =
-          downloadProgress.totalBytesWritten /
-          downloadProgress.totalBytesExpectedToWrite;
-        console.log(`Download progress: ${Math.round(progress * 100)}%`);
-      }
-    );
-
-    const result = await downloadResumable.downloadAsync();
-    if (!result) {
-      throw new Error("Download failed");
-    }
-    console.log("File downloaded to:", result.uri);
-
-    // Share the downloaded file
-    await Share.share({
-      url: result.uri,
-      title: filename,
-    });
-  } catch (error) {
-    console.error("Error downloading file:", error);
-  }
-};
-
-const styles = StyleSheet.create({
-  webView: {
-    flex: 1,
-  },
-});
 
 const Web = () => {
   const {
@@ -272,29 +229,9 @@ const Web = () => {
         break;
       case "external-link":
         if (Platform.OS !== "ios") {
-          console.warn("ExternalLinkAccount API is only available on iOS.");
           break;
         }
-        (async () => {
-          try {
-            const canOpen =
-              await ExternalLinkModule.canOpenExternalLinkHelper();
-            if (canOpen) {
-              const opened = await ExternalLinkModule.openExternalLinkHelper();
-              if (!opened) {
-                console.warn(
-                  "ExternalLinkModule.openExternalLinkHelper returned false (e.g., user cancelled)"
-                );
-              }
-            } else {
-              console.warn(
-                "ExternalLinkModule.canOpenExternalLinkHelper returned false"
-              );
-            }
-          } catch (error) {
-            console.error("Error using ExternalLinkModule:", error);
-          }
-        })();
+        handleExternalLink();
         break;
       default:
         // Forward to an EventEmitter to directly handle the event
@@ -379,8 +316,8 @@ const Web = () => {
       {webUrl && (
         <SafeAreaView
           style={[
-            styles.webView,
             {
+              flex: 1,
               backgroundColor: globalState.isFullscreen
                 ? colors.fullScreenStatusBar
                 : colors.default,
