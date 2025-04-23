@@ -15,8 +15,15 @@
       "buildNumber": "400",
       "infoPlist": {
         "UIBackgroundModes": ["audio"],
-        "ITSAppUsesNonExemptEncryption": false
-      }
+        "ITSAppUsesNonExemptEncryption": false,
+        "SKExternalLinkAccount": {
+          "*": "https://shop.republik.ch"
+        }
+      },
+      "entitlements": {
+        "com.apple.developer.storekit.external-link.account": true
+      },
+      "appleTeamId": "7MQXM58QM7"
     },
     "android": {
       "adaptiveIcon": {
@@ -47,6 +54,14 @@
       ]
     },
     "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "15.4"
+          }
+        }
+      ],
       [
         "expo-splash-screen",
         {

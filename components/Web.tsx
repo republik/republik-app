@@ -2,14 +2,7 @@ import React, { useRef, useState, useEffect } from "react";
 import { WebView, WebViewMessageEvent } from "react-native-webview";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import * as FileSystem from "expo-file-system";
-import {
-  StyleSheet,
-  Share,
-  Platform,
-  BackHandler,
-  StatusBar,
-} from "react-native";
+import { Share, Platform, BackHandler, StatusBar } from "react-native";
 
 import {
   APP_VERSION,
@@ -23,6 +16,8 @@ import NetworkError from "./NetworkError";
 import Loader from "./Loader";
 import { useColorContext } from "@/lib/ColorContext";
 import WebViewEventEmitter from "@/lib/WebViewEventEmitter";
+import { downloadFile } from "../lib/downloadFile";
+import { handleExternalLink } from "../lib/handleExternalLink";
 
 // Based on react-native-webview injection for Android
 // https://github.com/react-native-webview/react-native-webview/blob/194c6a2335b12cc05283413c44d0948eb5156e02/android/src/main/java/com/reactnativecommunity/webview/RNCWebViewManager.java#L651-L670
@@ -44,48 +39,6 @@ const generateMessageJS = (data: Message) => {
 
 const getLast = (array: string[]) => array[array.length - 1];
 
-const downloadFile = async (downloadUrl: string) => {
-  try {
-    // Get the filename from the URL
-    const filename = downloadUrl.split("/").pop();
-    // Create a path in the cache directory
-    const fileUri = `${FileSystem.cacheDirectory}${filename}`;
-
-    // Download the file
-    const downloadResumable = FileSystem.createDownloadResumable(
-      downloadUrl,
-      fileUri,
-      {},
-      (downloadProgress) => {
-        const progress =
-          downloadProgress.totalBytesWritten /
-          downloadProgress.totalBytesExpectedToWrite;
-        console.log(`Download progress: ${Math.round(progress * 100)}%`);
-      }
-    );
-
-    const result = await downloadResumable.downloadAsync();
-    if (!result) {
-      throw new Error("Download failed");
-    }
-    console.log("File downloaded to:", result.uri);
-
-    // Share the downloaded file
-    await Share.share({
-      url: result.uri,
-      title: filename,
-    });
-  } catch (error) {
-    console.error("Error downloading file:", error);
-  }
-};
-
-const styles = StyleSheet.create({
-  webView: {
-    flex: 1,
-  },
-});
-
 const Web = () => {
   const {
     globalState,
@@ -93,10 +46,10 @@ const Web = () => {
     persistedState,
     setPersistedState,
     pendingMessages,
-    dispatch
+    dispatch,
   } = useGlobalState();
   const webviewRef = useRef<WebView>(null);
-  const [webUrl, setWebUrl] = useState();
+  const [webUrl, setWebUrl] = useState<string | undefined>();
   const [isReady, setIsReady] = useState(false);
   const { colors, colorSchemeKey } = useColorContext();
 
@@ -177,6 +130,7 @@ const Web = () => {
     ) {
       return;
     }
+
     if (globalState.pendingUrl) {
       if (webUrl) {
         dispatch({
@@ -200,10 +154,12 @@ const Web = () => {
     }
   }, [webUrl, globalState, persistedState, setGlobalState, dispatch]);
 
+  // This effect handles sending queued messages
   useEffect(() => {
     if (!isReady) {
-      return;
+      return; // WebView not ready yet
     }
+
     const message = pendingMessages.filter((msg) => !msg.mark)[0];
     if (!message) {
       return;
@@ -266,6 +222,12 @@ const Web = () => {
           id: message.id,
         });
         break;
+      case "external-link":
+        if (Platform.OS !== "ios") {
+          break;
+        }
+        handleExternalLink();
+        break;
       default:
         // Forward to an EventEmitter to directly handle the event
         // in the respective component
@@ -325,15 +287,15 @@ const Web = () => {
       // If url has file extensions, keep the previous URL in persisted state
       const shouldPersist = !/\.[a-zA-Z0-9]+$/.test(url);
       if (shouldPersist) {
-        // Just persist the URL - writes are now always immediate
-        setPersistedState({ url }).then(success => {
-          if (!success) {
-            console.warn("Failed to persist navigation state");
-          }
-        });
+        // Just persist the URL - call the synchronous function
+        const success = setPersistedState({ url });
+        // Check the boolean result directly
+        if (!success) {
+          console.warn("Failed to persist navigation state");
+        }
       }
     }
-    
+
     if (getLast(history) !== url) {
       setHistory((currentHistory) => {
         if (getLast(currentHistory) === url) {
@@ -349,8 +311,8 @@ const Web = () => {
       {webUrl && (
         <SafeAreaView
           style={[
-            styles.webView,
             {
+              flex: 1,
               backgroundColor: globalState.isFullscreen
                 ? colors.fullScreenStatusBar
                 : colors.default,

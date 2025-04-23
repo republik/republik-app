@@ -21,14 +21,14 @@ const AppStateService = () => {
         (nextAppState === "background" || nextAppState === "inactive")
       ) {
         console.log("App going to background, forcing state persistence");
-        // Force an immediate write with no changes to ensure latest state is persisted
-        setPersistedState({}).then(success => {
-          if (success) {
-            console.log("Successfully persisted state before app background");
-          } else {
-            console.error("Failed to persist state before app background");
-          }
-        });
+        // Force a synchronous write with no changes to ensure latest state is persisted
+        // and directly check the boolean result.
+        const success = setPersistedState({}); 
+        if (success) {
+          console.log("Successfully persisted state before app background");
+        } else {
+          console.error("Failed to persist state before app background");
+        }
       }
       
       previousAppState.current = nextAppState;

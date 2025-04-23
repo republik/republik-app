@@ -48,9 +48,9 @@ app-example
 assets/fonts/*
 !assets/fonts/GTAmerica-Regular.otf
 
-#Native folders
-android/
-ios/
+#Root native folders
+/android
+/ios
 
 #builds
 *.ipa

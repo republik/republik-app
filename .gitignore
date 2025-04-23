@@ -48,9 +48,9 @@ app-example
 *.otf
 assets/fonts
 
-#Native folders
-android/
-ios/
+#Root native folders
+/android
+/ios
 
 #builds
 *.ipa
