@@ -17,7 +17,7 @@
         "UIBackgroundModes": ["audio"],
         "ITSAppUsesNonExemptEncryption": false,
         "SKExternalLinkAccount": {
-          "*": "https://www.republik.ch/shop"
+          "*": "https://shop.republik.ch"
         }
       },
       "entitlements": {
