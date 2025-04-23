@@ -49,8 +49,8 @@ app-example
 assets/fonts
 
 #Native folders
-android/
-ios/
+/android/
+/ios/
 
 #builds
 *.ipa
