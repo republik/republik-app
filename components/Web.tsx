@@ -2,12 +2,7 @@ import React, { useRef, useState, useEffect } from "react";
 import { WebView, WebViewMessageEvent } from "react-native-webview";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import {
-  Share,
-  Platform,
-  BackHandler,
-  StatusBar,
-} from "react-native";
+import { Share, Platform, BackHandler, StatusBar } from "react-native";
 
 import {
   APP_VERSION,
