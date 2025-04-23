@@ -3,11 +3,9 @@ import { AudioEvent } from "./AudioEvent";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Audio } from 'expo-av';
 import useWebViewEvent from "@/lib/useWebViewEvent";
-import useInterval from "@/lib/useInterval";
 import useWebViewHandlers from "./hooks/useWebViewHandlers";
 import { AppState, AppStateStatus, BackHandler, Platform } from "react-native";
 
-// Define audio player states to match TrackPlayer's states
 enum State {
   None = "none",
   Ready = "ready",
