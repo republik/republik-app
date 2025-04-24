@@ -125,8 +125,7 @@ const Web = () => {
     if (
       !globalState.deepLinkingReady ||
       !globalState.pushReady ||
-      !globalState.persistedStateReady //||
-      // !globalState.cookiesReady
+      !globalState.persistedStateReady
     ) {
       return;
     }
@@ -275,7 +274,6 @@ const Web = () => {
     const url = urlInput.startsWith(FRONTEND_BASE_URL)
       ? urlInput
       : `${FRONTEND_BASE_URL}${urlInput}`;
-
     // deduplicate
     // - called by onMessage routeChange and onNavigationStateChange
     //   - iOS triggers onNavigationStateChange for pushState in the web view
