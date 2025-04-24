@@ -22,8 +22,7 @@ async function registerForPushNotificationsAsync() {
   }
 
   if (Device.isDevice) {
-    const { status: existingStatus } =
-      await Notifications.getPermissionsAsync();
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
     if (existingStatus !== "granted") {
       const { status } = await Notifications.requestPermissionsAsync();
@@ -36,9 +35,8 @@ async function registerForPushNotificationsAsync() {
       return null;
     }
     try {
-      const { data: pushTokenString } =
-        await Notifications.getDevicePushTokenAsync();
-      console.log("Push token registered:", pushTokenString);
+      const { data: pushTokenString } = await Notifications.getDevicePushTokenAsync();
+      console.log('Push token registered:', pushTokenString);
       return pushTokenString;
     } catch (e: unknown) {
       handleRegistrationError(`Push token registration failed: ${e}`);
@@ -49,6 +47,8 @@ async function registerForPushNotificationsAsync() {
     return null;
   }
 }
+
+
 
 const PushService = () => {
   const {
@@ -65,7 +65,7 @@ const PushService = () => {
     if (!data) {
       return;
     }
-
+    
     if (data.type === "authorization") {
       // authorization only doesn't trigger navigation
       // webview listens to appstate and triggers login overlay
@@ -83,19 +83,7 @@ const PushService = () => {
       setGlobalState({ pushReady: true });
       return;
     }
-    // Handles if App is woken up from terminated state by a push notification
-    if (
-      lastNotificationResponse &&
-      lastNotificationResponse.notification.request.content.data &&
-      lastNotificationResponse.actionIdentifier ===
-        Notifications.DEFAULT_ACTION_IDENTIFIER
-    ) {
-      onNotificationOpened(
-        lastNotificationResponse.notification.request.content.data
-      );
-    }
-    // Set pushReady only *after* checking for the initial notification.
-    // This ensures Web.tsx waits for this check before proceeding.
+
     setGlobalState({ pushReady: true });
 
     registerForPushNotificationsAsync()
@@ -149,13 +137,20 @@ const PushService = () => {
       responseListener.current &&
         Notifications.removeNotificationSubscription(responseListener.current);
     };
-  }, [
-    isSignedIn,
-    dispatch,
-    setGlobalState,
-    lastNotificationResponse,
-    onNotificationOpened,
-  ]);
+  }, [isSignedIn, dispatch, setGlobalState]);
+
+  useEffect(() => {
+    // Handles if App is woken up from terminated state by a push notification
+    if (
+      lastNotificationResponse &&
+      lastNotificationResponse.notification.request.content.data &&
+      lastNotificationResponse.actionIdentifier === Notifications.DEFAULT_ACTION_IDENTIFIER
+    ) {
+      onNotificationOpened(
+        lastNotificationResponse.notification.request.content.data
+      );
+    }
+  }, [lastNotificationResponse]);
 
   return null;
 };
