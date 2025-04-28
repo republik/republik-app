@@ -1,7 +1,7 @@
 {
   "name": "republik-app",
   "main": "expo-router/entry",
-  "version": "2.3.1",
+  "version": "2.3.2",
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
@@ -36,7 +36,8 @@
     "react-native-track-player": "^4.1.1",
     "react-native-webview": "13.12.5",
     "url": "^0.11.4",
-    "expo-build-properties": "~0.13.2"
+    "expo-build-properties": "~0.13.2",
+    "expo-screen-orientation": "~8.0.4"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

@@ -13,9 +13,11 @@
       "associatedDomains": ["applinks:republik.ch", "applinks:www.republik.ch"],
       "bundleIdentifier": "app.republik",
       "buildNumber": "400",
+      "requireFullScreen": true,
       "infoPlist": {
         "UIBackgroundModes": ["audio"],
         "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Dieses App kann Ihre Kamera nutzen um ein Profilbild hochzuladen.",
         "SKExternalLinkAccount": {
           "*": "https://shop.republik.ch"
         }
@@ -85,6 +87,12 @@
         "expo-font",
         {
           "fonts": ["./assets/fonts/GTAmerica-Regular.otf"]
+        }
+      ],
+      [
+        "expo-screen-orientation",
+        {
+          "initialOrientation": "DEFAULT"
         }
       ],
       "expo-router"

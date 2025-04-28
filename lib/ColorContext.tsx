@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { Appearance } from 'react-native'
 import { useGlobalState } from './GlobalState'
+import { StatusBarStyle } from 'expo-status-bar'
 
 const colors = {
   light: {
@@ -27,7 +28,12 @@ const colors = {
   },
 }
 
-const ColorContext = React.createContext({
+interface ColorContextValue {
+  colors: typeof colors.light | typeof colors.dark; 
+  colorSchemeKey: StatusBarStyle;
+}
+
+const ColorContext = React.createContext<ColorContextValue>({
   colors: colors.light,
   colorSchemeKey: 'light',
 })

@@ -1,5 +1,4 @@
 import * as SplashScreen from "expo-splash-screen";
-import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 
 import * as Notifications from "expo-notifications";
@@ -13,6 +12,7 @@ import SetupAudioPlayerSerivce from "@/components/AudioPlayer/SetupAudioPlayerSe
 import HeadlessAudioPlayer from "@/components/AudioPlayer/HeadlessAudioPlayer";
 import TrackPlayer from "react-native-track-player";
 import { ColorContextProvider } from "@/lib/ColorContext";
+import StatusBar from "@/components/StatusBar";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -51,7 +51,7 @@ export default function RootLayout() {
       <AppStateService />
       <SafeAreaProvider>
         <ColorContextProvider>
-          <StatusBar animated translucent={true} />
+          <StatusBar />
           <Web />
           {isAudioPlayerReady && <HeadlessAudioPlayer />}
         </ColorContextProvider>
