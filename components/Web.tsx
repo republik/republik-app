@@ -360,7 +360,7 @@ const Web = () => {
             mediaPlaybackRequiresUserAction={false}
             allowsLinkPreview={true}
             scalesPageToFit={false}
-            decelerationRate="normal"
+            decelerationRate={0.998}
             onRenderProcessGone={() => {
               setDidCrash(true);
             }}
