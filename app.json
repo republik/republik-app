@@ -6,7 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
-    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
@@ -32,6 +31,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "edgeToEdgeEnabled": true,
       "package": "app.republik",
       "versionCode": 400,
       "googleServicesFile": "./google-services.json",
@@ -42,8 +42,11 @@
           "data": [
             {
               "scheme": "https",
-              "host": "*.webapp.io",
-              "pathPrefix": "/records"
+              "host": "www.republik.ch"
+            },
+            {
+              "scheme": "https",
+              "host": "republik.ch"
             }
           ],
           "category": ["BROWSABLE", "DEFAULT"]
