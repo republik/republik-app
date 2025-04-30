@@ -22,7 +22,8 @@ async function registerForPushNotificationsAsync() {
   }
 
   if (Device.isDevice) {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    const { status: existingStatus } =
+      await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
     if (existingStatus !== "granted") {
       const { status } = await Notifications.requestPermissionsAsync();
@@ -35,8 +36,9 @@ async function registerForPushNotificationsAsync() {
       return null;
     }
     try {
-      const { data: pushTokenString } = await Notifications.getDevicePushTokenAsync();
-      console.log('Push token registered:', pushTokenString);
+      const { data: pushTokenString } =
+        await Notifications.getDevicePushTokenAsync();
+      console.log("Push token registered:", pushTokenString);
       return pushTokenString;
     } catch (e: unknown) {
       handleRegistrationError(`Push token registration failed: ${e}`);
@@ -48,20 +50,25 @@ async function registerForPushNotificationsAsync() {
   }
 }
 
-
-
 const PushService = () => {
   const {
     persistedState: { isSignedIn },
     setGlobalState,
     dispatch,
   } = useGlobalState();
-  const lastNotificationResponse = Notifications.useLastNotificationResponse();
 
   const notificationListener = useRef<Notifications.EventSubscription>();
   const responseListener = useRef<Notifications.EventSubscription>();
 
-  const onNotificationOpened = (data: Record<string, any>) => {
+  const onNotificationOpened = (notification: Notifications.Notification) => {
+    // there seems to be a bug in the response object of the notification listener
+    // it is inconsistent between iOS and Android see:
+    // https://github.com/expo/expo/issues/27503#issuecomment-2488333935
+    const data =
+      Platform.OS === "ios"
+        ? // @ts-ignore
+          notification.request.trigger?.payload
+        : notification.request.content.data;
     if (!data) {
       return;
     }
@@ -84,7 +91,26 @@ const PushService = () => {
       return;
     }
 
-    setGlobalState({ pushReady: true });
+    const checkInitialNotification = async () => {
+      try {
+        const initialNotification =
+          await Notifications.getLastNotificationResponseAsync();
+        if (
+          initialNotification &&
+          initialNotification.actionIdentifier ===
+            Notifications.DEFAULT_ACTION_IDENTIFIER
+        ) {
+          onNotificationOpened(
+            initialNotification.notification
+          );
+        }
+      } catch (error) {
+        console.error("getInitialNotification", error);
+      }
+      setGlobalState({ pushReady: true });
+    };
+
+    checkInitialNotification();
 
     registerForPushNotificationsAsync()
       .then((token) => {
@@ -109,6 +135,11 @@ const PushService = () => {
       })
       .catch((error: any) => console.warn(error));
 
+    responseListener.current =
+      Notifications.addNotificationResponseReceivedListener((response) => {
+        onNotificationOpened(response.notification);
+      });
+
     notificationListener.current =
       Notifications.addNotificationReceivedListener((notification) => {
         const data = notification.request.content.data;
@@ -124,11 +155,6 @@ const PushService = () => {
         }
       });
 
-    responseListener.current =
-      Notifications.addNotificationResponseReceivedListener((response) => {
-        onNotificationOpened(response.notification.request.content.data);
-      });
-
     return () => {
       notificationListener.current &&
         Notifications.removeNotificationSubscription(
@@ -138,19 +164,6 @@ const PushService = () => {
         Notifications.removeNotificationSubscription(responseListener.current);
     };
   }, [isSignedIn, dispatch, setGlobalState]);
-
-  useEffect(() => {
-    // Handles if App is woken up from terminated state by a push notification
-    if (
-      lastNotificationResponse &&
-      lastNotificationResponse.notification.request.content.data &&
-      lastNotificationResponse.actionIdentifier === Notifications.DEFAULT_ACTION_IDENTIFIER
-    ) {
-      onNotificationOpened(
-        lastNotificationResponse.notification.request.content.data
-      );
-    }
-  }, [lastNotificationResponse]);
 
   return null;
 };
