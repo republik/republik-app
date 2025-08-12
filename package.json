@@ -36,7 +36,7 @@
     "react-native": "0.79.5",
     "react-native-mmkv": "^3.2.0",
     "react-native-safe-area-context": "5.4.0",
-    "react-native-track-player": "git+https://github.com/doublesymmetry/react-native-track-player.git#f3fc4d560154987dd7d341648b3ee6ac01972e15",
+    "react-native-track-player": "^5.0.0-alpha0",
     "react-native-webview": "13.13.5",
     "url": "^0.11.4"
   },
