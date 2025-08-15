@@ -208,3 +208,55 @@ The app supports deep linking for Republik URLs:
 Push notifications are configured with [Expo Notifications](https://docs.expo.dev/push-notifications/overview/) for both platforms with platform-specific setup required:
 - iOS: APNs configuration
 - Android: FCM configuration via `google-services.json`
+
+## Data Persistence & WebView Storage
+
+### Problem
+
+WebView-based applications face inherent challenges with data persistence across app restarts:
+
+- **iOS WebView Storage Issues**: `WKWebView` uses separate cookie storage from Safari, and localStorage can be cleared unpredictably when the app is terminated ([react-native-webview#3572](https://github.com/react-native-webview/react-native-webview/issues/3572))
+- **Android WebView Limitations**: WebView cookie and localStorage persistence varies across Android versions and can be unreliable after app closure
+- **Expo Managed Workflow**: Limited access to native cookie management APIs that could provide more reliable storage
+
+These issues resulted in users losing:
+- **Login sessions** (cookies not persisting)
+- **Audio playback preferences** (playback rate resetting to default)
+- **User settings** stored in localStorage
+
+### Solution: Hybrid Storage Strategy
+
+The app implements a hybrid approach combining **native storage reliability** with **WebView convenience**:
+
+#### 1. Native Storage as Source of Truth
+- Uses **MMKV** (via `react-native-mmkv`) for reliable, fast native storage
+- Critical data is always backed up to native storage
+- Survives app restarts, updates, and system reboots
+
+#### 2. WebView Data Backup & Restoration
+- **Automatic Backup**: When app goes to background, extracts cookies and localStorage from WebView
+- **Smart Restoration**: On WebView load, restores data with 100ms delay to avoid React hydration conflicts
+- **Seamless Experience**: Users maintain login state and preferences across app sessions
+
+#### 3. Implementation Details
+
+**Data Flow:**
+```
+WebView ←→ Native Storage (MMKV)
+   ↓              ↑
+User Action → Persist to both layers
+App Restart → Restore from native to WebView
+```
+
+**Key Components:**
+
+- **`components/Web.tsx`**: Handles WebView data extraction and restoration
+- **`components/AudioPlayer/HeadlessAudioPlayer.ts`**: Manages playback rate persistence
+- **`lib/GlobalState.tsx`**: Provides MMKV-backed state management
+
+**Data Restored:**
+- Authentication cookies
+- localStorage content (user preferences, settings)
+- Audio playback rate
+- Theme preferences
+

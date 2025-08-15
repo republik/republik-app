@@ -89,13 +89,14 @@ const Web = () => {
       if (nextAppState === 'background' || nextAppState === 'inactive') {
         // Save WebView data before backgrounding
         if (webviewRef.current) {
-          console.log("App backgrounding, saving WebView data...");
+          console.log("App backgrounding, saving WebView data and current URL...");
           webviewRef.current.injectJavaScript(`
             (function() {
               try {
                 const webViewData = {
                   cookies: document.cookie,
                   localStorage: JSON.stringify(localStorage),
+                  currentUrl: window.location.href,
                   timestamp: Date.now()
                 };
                 window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({
@@ -114,6 +115,35 @@ const Web = () => {
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription?.remove();
   }, []);
+
+  // Periodic URL persistence as fallback for iOS process termination
+  useEffect(() => {
+    if (!isReady || !webviewRef.current) return;
+
+    const saveCurrentUrl = () => {
+      if (webviewRef.current) {
+        webviewRef.current.injectJavaScript(`
+          (function() {
+            try {
+              const currentUrl = window.location.href;
+              if (currentUrl) {
+                window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'periodicUrlSave',
+                  payload: { currentUrl: currentUrl }
+                }));
+              }
+            } catch (e) {
+              console.error('Failed to save current URL periodically:', e);
+            }
+          })();
+        `);
+      }
+    };
+
+    // Save URL every 5 seconds as fallback
+    const interval = setInterval(saveCurrentUrl, 5000);
+    return () => clearInterval(interval);
+  }, [isReady]);
 
   // Capture Android back button press
   useEffect(() => {
@@ -264,13 +294,42 @@ const Web = () => {
         try {
           const webViewData = JSON.parse(message.payload.data);
           console.log("Saving WebView state:", webViewData);
-          setPersistedState({ 
+          
+          const stateToSave: any = { 
             webViewCookies: webViewData.cookies,
             webViewLocalStorage: webViewData.localStorage,
             webViewDataTimestamp: webViewData.timestamp
-          });
+          };
+          
+          // Save current URL if it's different from persisted URL and is a valid Republik URL
+          if (webViewData.currentUrl && webViewData.currentUrl !== persistedState.url) {
+            const shouldPersistUrl = webViewData.currentUrl.startsWith(FRONTEND_BASE_URL) && 
+                                   !/\.[a-zA-Z0-9]+$/.test(webViewData.currentUrl);
+            if (shouldPersistUrl) {
+              stateToSave.url = webViewData.currentUrl;
+              console.log("Persisting current URL from background save:", webViewData.currentUrl);
+            }
+          }
+          
+          setPersistedState(stateToSave);
         } catch (error) {
           console.error("Failed to save WebView state:", error);
+        }
+        break;
+      case "periodicUrlSave":
+        // Handle periodic URL saving for iOS process termination resilience
+        try {
+          const { currentUrl } = message.payload;
+          if (currentUrl && currentUrl !== persistedState.url) {
+            const shouldPersistUrl = currentUrl.startsWith(FRONTEND_BASE_URL) && 
+                                   !/\.[a-zA-Z0-9]+$/.test(currentUrl);
+            if (shouldPersistUrl) {
+              console.log("Periodic URL save:", currentUrl);
+              setPersistedState({ url: currentUrl });
+            }
+          }
+        } catch (error) {
+          console.error("Failed to save URL periodically:", error);
         }
         break;
       default:
