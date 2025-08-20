@@ -224,39 +224,38 @@ These issues resulted in users losing:
 - **Audio playback preferences** (playback rate resetting to default)
 - **User settings** stored in localStorage
 
-### Solution: Hybrid Storage Strategy
+### Solution: Native Storage with URL Persistence
 
-The app implements a hybrid approach combining **native storage reliability** with **WebView convenience**:
+The app implements a focused approach using **native storage reliability** with **periodic URL persistence**:
 
 #### 1. Native Storage as Source of Truth
 - Uses **MMKV** (via `react-native-mmkv`) for reliable, fast native storage
-- Critical data is always backed up to native storage
+- Critical data is stored in native storage
 - Survives app restarts, updates, and system reboots
 
-#### 2. WebView Data Backup & Restoration
-- **Automatic Backup**: When app goes to background, extracts cookies and localStorage from WebView
-- **Smart Restoration**: On WebView load, restores data with 100ms delay to avoid React hydration conflicts
-- **Seamless Experience**: Users maintain login state and preferences across app sessions
+#### 2. Periodic URL Persistence
+- **Automatic URL Saving**: Every 5 seconds, saves the current WebView URL to native storage
+- **Navigation Restoration**: On app restart, navigates back to the last saved URL
+- **iOS Process Termination Resilience**: Ensures users return to their reading position even after unexpected app termination
 
 #### 3. Implementation Details
 
 **Data Flow:**
 ```
-WebView ←→ Native Storage (MMKV)
-   ↓              ↑
-User Action → Persist to both layers
-App Restart → Restore from native to WebView
+WebView URL → Native Storage (MMKV)
+      ↓              ↑
+   Navigation → Persist URL periodically
+   App Restart → Navigate to saved URL
 ```
 
 **Key Components:**
 
-- **`components/Web.tsx`**: Handles WebView data extraction and restoration
+- **`components/Web.tsx`**: Handles periodic URL saving and navigation restoration
 - **`components/AudioPlayer/HeadlessAudioPlayer.ts`**: Manages playback rate persistence
 - **`lib/GlobalState.tsx`**: Provides MMKV-backed state management
 
-**Data Restored:**
-- Authentication cookies
-- localStorage content (user preferences, settings)
+**Data Persisted:**
+- Current WebView URL (for navigation restoration)
 - Audio playback rate
 - Theme preferences
 
