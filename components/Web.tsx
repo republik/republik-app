@@ -83,38 +83,7 @@ const Web = () => {
     });
   }, [colorSchemeKey, dispatch]);
 
-  // Save WebView data when app goes to background
-  useEffect(() => {
-    const handleAppStateChange = (nextAppState: string) => {
-      if (nextAppState === 'background' || nextAppState === 'inactive') {
-        // Save WebView data before backgrounding
-        if (webviewRef.current) {
-          console.log("App backgrounding, saving WebView data and current URL...");
-          webviewRef.current.injectJavaScript(`
-            (function() {
-              try {
-                const webViewData = {
-                  cookies: document.cookie,
-                  localStorage: JSON.stringify(localStorage),
-                  currentUrl: window.location.href,
-                  timestamp: Date.now()
-                };
-                window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({
-                  type: 'saveWebViewState',
-                  payload: { data: JSON.stringify(webViewData) }
-                }));
-              } catch (e) {
-                console.error('Failed to save WebView data:', e);
-              }
-            })();
-          `);
-        }
-      }
-    };
 
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
-    return () => subscription?.remove();
-  }, []);
 
   // Periodic URL persistence as fallback for iOS process termination
   useEffect(() => {
@@ -289,33 +258,7 @@ const Web = () => {
         }
         handleExternalLink();
         break;
-      case "saveWebViewState":
-        // Handle WebView state saving request from AppStateService
-        try {
-          const webViewData = JSON.parse(message.payload.data);
-          console.log("Saving WebView state:", webViewData);
-          
-          const stateToSave: any = { 
-            webViewCookies: webViewData.cookies,
-            webViewLocalStorage: webViewData.localStorage,
-            webViewDataTimestamp: webViewData.timestamp
-          };
-          
-          // Save current URL if it's different from persisted URL and is a valid Republik URL
-          if (webViewData.currentUrl && webViewData.currentUrl !== persistedState.url) {
-            const shouldPersistUrl = webViewData.currentUrl.startsWith(FRONTEND_BASE_URL) && 
-                                   !/\.[a-zA-Z0-9]+$/.test(webViewData.currentUrl);
-            if (shouldPersistUrl) {
-              stateToSave.url = webViewData.currentUrl;
-              console.log("Persisting current URL from background save:", webViewData.currentUrl);
-            }
-          }
-          
-          setPersistedState(stateToSave);
-        } catch (error) {
-          console.error("Failed to save WebView state:", error);
-        }
-        break;
+
       case "periodicUrlSave":
         // Handle periodic URL saving for iOS process termination resilience
         try {
@@ -375,62 +318,7 @@ const Web = () => {
     }
   };
 
-  // Function to restore WebView data from persistent storage
-  const restoreWebViewData = () => {
-    if (!webviewRef.current) return;
 
-    const { webViewCookies, webViewLocalStorage } = persistedState;
-    
-    if (webViewCookies || webViewLocalStorage) {
-      console.log("Restoring WebView data...");
-      
-      // Safely encode the data to avoid injection issues
-      const encodedCookies = webViewCookies ? JSON.stringify(webViewCookies) : '""';
-      const encodedLocalStorage = webViewLocalStorage ? JSON.stringify(webViewLocalStorage) : '""';
-      
-      const restoreScript = `
-        (function() {
-          try {
-            // Restore cookies
-            const cookiesData = ${encodedCookies};
-            if (cookiesData && cookiesData !== 'undefined') {
-              if (cookiesData) {
-                // Set restored cookies
-                const cookieArray = cookiesData.split(';');
-                cookieArray.forEach(cookie => {
-                  if (cookie.trim()) {
-                    document.cookie = cookie.trim();
-                  }
-                });
-                console.log('Cookies restored:', cookiesData);
-              }
-            }
-            
-            // Restore localStorage
-            const localStorageData = ${encodedLocalStorage};
-            if (localStorageData && localStorageData !== 'undefined' && localStorageData !== '{}') {
-              try {
-                const parsedLocalStorage = JSON.parse(localStorageData);
-                Object.keys(parsedLocalStorage).forEach(key => {
-                  localStorage.setItem(key, parsedLocalStorage[key]);
-                });
-                console.log('LocalStorage restored:', parsedLocalStorage);
-              } catch (parseError) {
-                console.error('Failed to parse localStorage data:', parseError);
-              }
-            }
-            
-            return true;
-          } catch (e) {
-            console.error('Failed to restore WebView data:', e);
-            return false;
-          }
-        })();
-      `;
-      
-      webviewRef.current.injectJavaScript(restoreScript);
-    }
-  };
 
   const onNavigationStateChange = ({ url: urlInput }: { url: string }) => {
     const url = urlInput.startsWith(FRONTEND_BASE_URL)
@@ -488,10 +376,6 @@ const Web = () => {
             onMessage={onMessage}
             onLoad={() => {
               setIsReady(true);
-              // Delay restoration to avoid hydration issues
-              setTimeout(() => {
-                restoreWebViewData();
-              }, 100);
             }}
             onLoadStart={({ nativeEvent }) => {
               if (isReady && nativeEvent.loading && Platform.OS === "ios") {
