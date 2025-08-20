@@ -3,7 +3,6 @@
     "name": "Republik",
     "slug": "republik-app",
     "version": "2.4.0",
-    "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "newArchEnabled": true,
