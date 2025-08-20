@@ -54,7 +54,7 @@ const Web = () => {
   const { colors, colorSchemeKey } = useColorContext();
 
   const [history, setHistory] = useState<string[]>([]);
-  const historyRef = useRef<string[]>();
+  const historyRef = useRef<string[]>([]);
   historyRef.current = history;
 
   const { appState } = globalState;

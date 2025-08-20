@@ -9,11 +9,12 @@ import TrackPlayer, {
   useTrackPlayerEvents,
   PitchAlgorithm,
 } from "react-native-track-player";
-import Logo from "@/assets/images/playlist-logo.png";
+const Logo = require("@/assets/images/playlist-logo.png");
 import useWebViewEvent from "@/lib/useWebViewEvent";
 import useInterval from "@/lib/useInterval";
 import useWebViewHandlers from "./hooks/useWebViewHandlers";
 import { AppState, AppStateStatus, BackHandler, Platform } from "react-native";
+import { useGlobalState } from "@/lib/GlobalState";
 
 type AudioObject = {
   item: AudioQueueItem;
@@ -79,6 +80,8 @@ type UIState = {
 const HeadlessAudioPlayer = ({}) => {
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const playerState = usePlaybackState();
+  const { persistedState, setPersistedState } = useGlobalState();
+
   const [uiState, setUIState] = useState<UIState>({
     isVisible: false,
     isExpanded: false,
@@ -87,7 +90,9 @@ const HeadlessAudioPlayer = ({}) => {
   const [activeTrack, setActiveTrack] = useState<AudioObject | null>(null);
   const lazyInitializedTrack = useRef<AudioObject | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [playbackRate, setPlaybackRate] = useState(1);
+  const [playbackRate, setPlaybackRate] = useState(
+    persistedState.playbackRate || 1
+  );
 
   const { notifyStateSync, notifyQueueAdvance, notifyError, notifyMinimize } =
     useWebViewHandlers();
@@ -302,12 +307,17 @@ const HeadlessAudioPlayer = ({}) => {
       try {
         setPlaybackRate(payload);
         await TrackPlayer.setRate(payload);
+
+        // Persist playback rate to native storage
+        setPersistedState({ playbackRate: payload });
+        console.log("Playback rate persisted:", payload);
+
         syncStateWithWebUI();
       } catch (error: any) {
         handleError(error);
       }
     },
-    [syncStateWithWebUI, handleError]
+    [syncStateWithWebUI, handleError, setPersistedState]
   );
 
   useTrackPlayerEvents([Event.PlaybackQueueEnded], async (event) => {
@@ -355,9 +365,10 @@ const HeadlessAudioPlayer = ({}) => {
   // Sync the state with the webview if in a playing state
   useInterval(
     () => syncStateWithWebUI(),
-    [State.Buffering, State.Playing].includes(playerState.state)
+    playerState.state &&
+      [State.Buffering, State.Playing].includes(playerState.state)
       ? SYNC_INTERVAL_WHILE_PLAYING
-      : [State.Loading].includes(playerState.state)
+      : playerState.state && [State.Loading].includes(playerState.state)
       ? SYNC_INTERVAL_WHILE_CONNECTING
       : null
   );
@@ -449,6 +460,30 @@ const HeadlessAudioPlayer = ({}) => {
       return () => backHandler.remove();
     }
   }, [uiState, notifyMinimize]);
+
+  // Restore playback rate from persisted state
+  useEffect(() => {
+    if (
+      persistedState.playbackRate &&
+      persistedState.playbackRate !== playbackRate
+    ) {
+      console.log(
+        "Restoring playback rate from persisted state:",
+        persistedState.playbackRate
+      );
+      setPlaybackRate(persistedState.playbackRate);
+
+      // Apply to TrackPlayer if initialized
+      if (isInitialized) {
+        TrackPlayer.setRate(persistedState.playbackRate).catch((error) => {
+          console.error(
+            "Failed to restore playback rate to TrackPlayer:",
+            error
+          );
+        });
+      }
+    }
+  }, [persistedState.playbackRate, playbackRate, isInitialized]);
 
   // Sync the player state with the webview when the app comes to the foreground
   useEffect(() => {
