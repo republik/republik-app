@@ -19,16 +19,12 @@ export const useOrientation = () => {
     "portrait"
   );
 
-  // Since the new audio player isn't optimized for landscape,
-  // we currently don't support unlocking the screen orientation
-  // TODO: unlock the screen orientation when the audio player is optimized for landscape
-  // TODO: remove "orientation": "portrait", from app.json
-  // useEffect(() => {
-  //   const unlockScreenOerientation = async () => {
-  //     await ScreenOrientation.unlockAsync()
-  //   }
-  //   unlockScreenOerientation()
-  // }, [])
+  useEffect(() => {
+    const unlockScreenOerientation = async () => {
+      await ScreenOrientation.unlockAsync()
+    }
+    unlockScreenOerientation()
+  }, [])
 
   useEffect(() => {
     const getInitialOrientation = async () => {
