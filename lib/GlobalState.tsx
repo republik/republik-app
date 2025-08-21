@@ -6,7 +6,6 @@ import React, {
   useReducer,
   ReactNode,
 } from "react";
-// import AsyncStorage from "@react-native-async-storage/async-storage";
 import { MMKV } from 'react-native-mmkv'; // Import MMKV
 import * as Crypto from "expo-crypto";
 
@@ -70,7 +69,6 @@ const readStore = ({
   setGlobalState({ persistedStateReady: true });
 };
 
-// Updated writeStore using MMKV
 const writeStore = ({
   persistedState,
   setError,

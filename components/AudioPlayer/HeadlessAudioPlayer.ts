@@ -117,7 +117,7 @@ const HeadlessAudioPlayer = ({}) => {
    * lazy initialized track.
    */
   const syncStateWithWebUI = useCallback(async () => {
-    const [track, state, { duration, position }, playbackRate] =
+    const [track, state, { duration, position }, trackPlayerPlaybackRate] =
       await Promise.all([
         getCurrentPlayingTrack(),
         TrackPlayer.getPlaybackState(),
@@ -131,7 +131,7 @@ const HeadlessAudioPlayer = ({}) => {
         playerState: state.state,
         duration,
         position,
-        playbackRate: Math.round(playbackRate * 100) / 100,
+        playbackRate: Math.round(trackPlayerPlaybackRate * 100) / 100,
       });
     } else if (lazyInitializedTrack?.current) {
       notifyStateSync({
@@ -142,8 +142,18 @@ const HeadlessAudioPlayer = ({}) => {
         playbackRate,
         forceUpdate: true,
       });
+    } else {
+      // Send current playback rate to sync WebView UI even when no track is loaded
+      notifyStateSync({
+        itemId: "",
+        playerState: State.None,
+        duration: 0,
+        position: 0,
+        playbackRate,
+        forceUpdate: true,
+      });
     }
-  }, [notifyStateSync, isInitialized]);
+  }, [notifyStateSync, isInitialized, playbackRate]);
 
   /**
    * Inform web-view to advance audio-queue.
