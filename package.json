@@ -1,6 +1,6 @@
 {
   "name": "republik-app",
-  "version": "2.3.2",
+  "version": "2.3.5",
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
