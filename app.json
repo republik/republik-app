@@ -7,6 +7,7 @@
     "scheme": "myapp",
     "newArchEnabled": true,
     "ios": {
+      "icon": "./assets/images/app.icon",
       "supportsTablet": true,
       "associatedDomains": ["applinks:republik.ch", "applinks:www.republik.ch"],
       "bundleIdentifier": "app.republik",
@@ -96,16 +97,12 @@
         {
           "initialOrientation": "DEFAULT"
         }
-      ],
-      "expo-router"
+      ]
     ],
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
-      "router": {
-        "origin": false
-      },
       "eas": {
         "projectId": "101932ce-34f7-4301-b760-c11309ce617e"
       }

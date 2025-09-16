@@ -3,7 +3,6 @@ import TrackPlayer, {
   Capability,
   IOSCategory,
   IOSCategoryMode,
-  IOSCategoryOptions,
   RepeatMode,
 } from 'react-native-track-player'
 
@@ -32,7 +31,6 @@ const SetupAudioPlayerService = async () => {
         Capability.JumpBackward,
         Capability.SeekTo,
       ],
-      compactCapabilities: [Capability.Play, Capability.Pause],
       android: {
         appKilledPlaybackBehavior:
           AppKilledPlaybackBehavior.StopPlaybackAndRemoveNotification,

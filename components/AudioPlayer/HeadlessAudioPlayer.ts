@@ -355,9 +355,10 @@ const HeadlessAudioPlayer = ({}) => {
   // Sync the state with the webview if in a playing state
   useInterval(
     () => syncStateWithWebUI(),
-    [State.Buffering, State.Playing].includes(playerState.state)
+    playerState.state &&
+      [State.Buffering, State.Playing].includes(playerState.state)
       ? SYNC_INTERVAL_WHILE_PLAYING
-      : [State.Loading].includes(playerState.state)
+      : playerState.state && [State.Loading].includes(playerState.state)
       ? SYNC_INTERVAL_WHILE_CONNECTING
       : null
   );

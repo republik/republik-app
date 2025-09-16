@@ -14,23 +14,24 @@ import TrackPlayer from "react-native-track-player";
 import { ColorContextProvider } from "@/lib/ColorContext";
 import StatusBar from "@/components/StatusBar";
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
-TrackPlayer.registerPlaybackService(() => require("../services/PlaybackService.ts"));
+
+TrackPlayer.registerPlaybackService(() =>
+  require("./services/PlaybackService.ts")
+);
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: false,
+    shouldSetBadge: false,
   }),
 });
 
 export default function RootLayout() {
-
   const [isAudioPlayerReady, setIsAudioPlayerReady] = useState(false);
 
   useEffect(() => {
-    SplashScreen.hideAsync();
+    SplashScreen.hide();
   }, []);
 
   //Initialize the AudioPlayer

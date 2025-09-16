@@ -54,7 +54,7 @@ const Web = () => {
   const { colors, colorSchemeKey } = useColorContext();
 
   const [history, setHistory] = useState<string[]>([]);
-  const historyRef = useRef<string[]>();
+  const historyRef = useRef<string[]>([]);
   historyRef.current = history;
 
   const { appState } = globalState;
@@ -176,7 +176,7 @@ const Web = () => {
         id: message.id,
         mark: false,
       });
-    }, 5 * 1000);
+    }, 2 * 1000);
   }, [isReady, pendingMessages, dispatch]);
 
   const onMessage = (e: WebViewMessageEvent) => {

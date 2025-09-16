@@ -3,12 +3,16 @@ import { View, Text, TouchableOpacity, StyleSheet, Image } from "react-native";
 import { useColorContext } from "@/lib/ColorContext";
 
 const NetworkError = ({ onReload }: { onReload: () => void }) => {
-  const { colors } = useColorContext();
+  const { colors, colorSchemeKey } = useColorContext();
 
   return (
     <View style={[styles.container, { backgroundColor: colors.default }]}>
       <View style={styles.logo}>
-        <Image source={require("../assets/images/republik_logo.png")} />
+        {colorSchemeKey === "light" ? (
+          <Image source={require("../assets/images/republik_logo.png")} />
+        ) : (
+          <Image source={require("../assets/images/republik_logo_white.png")} />
+        )}
       </View>
       <View style={styles.errorContainer}>
         <Text style={[styles.errorTitle, { color: colors.text }]}>
@@ -22,9 +26,8 @@ const NetworkError = ({ onReload }: { onReload: () => void }) => {
             style={[
               styles.button,
               {
-                backgroundColor: colors.default,
-                borderColor: colors.text,
-                color: colors.text,
+                backgroundColor: colors.text,
+                color: colors.default,
               },
             ]}
           >
@@ -66,7 +69,7 @@ const styles = StyleSheet.create({
     fontFamily: "GTAmerica-Regular",
   },
   errorText: {
-    fontSize: 20,
+    fontSize: 18,
     textAlign: "center",
     marginBottom: 20,
     fontFamily: "GTAmerica-Regular",
@@ -74,7 +77,8 @@ const styles = StyleSheet.create({
   button: {
     paddingVertical: 10,
     paddingHorizontal: 20,
-    fontSize: 20,
+    fontSize: 18,
     borderWidth: 1,
+    borderRadius: 2,
   },
 });
