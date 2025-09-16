@@ -9,7 +9,6 @@ import TrackPlayer, {
   useTrackPlayerEvents,
   PitchAlgorithm,
 } from "react-native-track-player";
-import Logo from "@/assets/images/playlist-logo.png";
 import useWebViewEvent from "@/lib/useWebViewEvent";
 import useInterval from "@/lib/useInterval";
 import useWebViewHandlers from "./hooks/useWebViewHandlers";
@@ -60,7 +59,8 @@ function getTrackFromAudioQueueItem(
     url: audioSource.mp3,
     title,
     artist: "Republik",
-    artwork: coverImage || image || Logo,
+    artwork:
+      coverImage || image || require("../../assets/images/playlist-logo.png"),
     duration: audioSource.durationMs / 1000,
     pitchAlgorithm: PitchAlgorithm.Voice,
   };
