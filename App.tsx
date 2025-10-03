@@ -14,7 +14,6 @@ import TrackPlayer from "react-native-track-player";
 import { ColorContextProvider } from "@/lib/ColorContext";
 import StatusBar from "@/components/StatusBar";
 import * as Sentry from "@sentry/react-native";
-import { Button } from "react-native";
 
 Sentry.init({
   dsn: "https://6905706f3204699528a470e4685c5dc2@o4507101684105216.ingest.de.sentry.io/4510103813816400",
