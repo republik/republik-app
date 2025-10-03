@@ -179,58 +179,83 @@ const Web = () => {
     }, 2 * 1000);
   }, [isReady, pendingMessages, dispatch]);
 
-  const onMessage = (e: WebViewMessageEvent) => {
-    const message: {
-      type: string;
-      id: string;
-      colorSchemeKey?: string;
-      payload: any;
-    } = JSON.parse(e.nativeEvent.data) || {};
-    devLog("onMessage", message);
-    switch (message.type) {
-      case "routeChange":
-        onNavigationStateChange(message.payload);
-        break;
-      case "share":
-        share(message.payload);
-        break;
-      case "haptic":
-        Haptics.notificationAsync(message.payload.type);
-        break;
-      case "play-audio":
-        setGlobalState({ autoPlayAudio: message.payload });
-        setPersistedState({
-          audio: message.payload,
-        });
-        break;
-      case "isSignedIn":
-        setPersistedState({ isSignedIn: message.payload });
-        break;
-      case "fullscreen-enter":
-        setGlobalState({ isFullscreen: true });
-        break;
-      case "fullscreen-exit":
-        setGlobalState({ isFullscreen: false });
-        break;
-      case "setColorScheme":
-        setPersistedState({ userSetColorScheme: message.colorSchemeKey });
-        break;
-      case "ackMessage":
-        dispatch({
-          type: "clearMessage",
-          id: message.id,
-        });
-        break;
-      case "external-link":
-        if (Platform.OS !== "ios") {
-          break;
+  const onMessage = async (e: WebViewMessageEvent) => {
+    let messageType = 'unknown';
+    
+    try {
+      const message: {
+        type: string;
+        id: string;
+        colorSchemeKey?: string;
+        payload: any;
+      } = JSON.parse(e.nativeEvent.data) || {};
+      
+      messageType = message.type;
+      devLog("onMessage", message);
+      
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => {
+          const error = new Error(`WebView message timeout: ${messageType}`);
+          error.name = 'WebViewTimeout';
+          reject(error);
+        }, 3000)
+      );
+
+      const processingPromise = async () => {
+        switch (message.type) {
+          case "routeChange":
+            onNavigationStateChange(message.payload);
+            break;
+          case "share":
+            await share(message.payload);
+            break;
+          case "haptic":
+            await Haptics.notificationAsync(message.payload.type);
+            break;
+          case "play-audio":
+            setGlobalState({ autoPlayAudio: message.payload });
+            setPersistedState({
+              audio: message.payload,
+            });
+            break;
+          case "isSignedIn":
+            setPersistedState({ isSignedIn: message.payload });
+            break;
+          case "fullscreen-enter":
+            setGlobalState({ isFullscreen: true });
+            break;
+          case "fullscreen-exit":
+            setGlobalState({ isFullscreen: false });
+            break;
+          case "setColorScheme":
+            setPersistedState({ userSetColorScheme: message.colorSchemeKey });
+            break;
+          case "ackMessage":
+            dispatch({
+              type: "clearMessage",
+              id: message.id,
+            });
+            break;
+          case "external-link":
+            if (Platform.OS !== "ios") {
+              break;
+            }
+            handleExternalLink();
+            break;
+          default:
+            WebViewEventEmitter.emit(message.type, message.payload);
         }
-        handleExternalLink();
-        break;
-      default:
-        // Forward to an EventEmitter to directly handle the event
-        // in the respective component
-        WebViewEventEmitter.emit(message.type, message.payload);
+      };
+
+      await Promise.race([processingPromise(), timeoutPromise]);
+    } catch (error) {
+      // Add minimal context and re-throw for Sentry
+      console.error(`WebView message error [${messageType}]:`, {
+        error,
+        messageSize: e.nativeEvent.data.length,
+        platform: Platform.OS
+      });
+      throw error;
     }
   };
 

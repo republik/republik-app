@@ -13,7 +13,22 @@ import HeadlessAudioPlayer from "@/components/AudioPlayer/HeadlessAudioPlayer";
 import TrackPlayer from "react-native-track-player";
 import { ColorContextProvider } from "@/lib/ColorContext";
 import StatusBar from "@/components/StatusBar";
+import * as Sentry from "@sentry/react-native";
+import { Button } from "react-native";
 
+Sentry.init({
+  dsn: "https://6905706f3204699528a470e4685c5dc2@o4507101684105216.ingest.de.sentry.io/4510103813816400",
+
+  // Adds more context data to events (IP address, cookies, user, etc.)
+  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  sendDefaultPii: true,
+
+  // Enable Logs
+  enableLogs: true,
+
+  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
+  // spotlight: __DEV__,
+});
 
 TrackPlayer.registerPlaybackService(() =>
   require("./services/PlaybackService.ts")
@@ -27,7 +42,7 @@ Notifications.setNotificationHandler({
   }),
 });
 
-export default function RootLayout() {
+export default Sentry.wrap(function RootLayout() {
   const [isAudioPlayerReady, setIsAudioPlayerReady] = useState(false);
 
   useEffect(() => {
@@ -59,4 +74,4 @@ export default function RootLayout() {
       </SafeAreaProvider>
     </GlobalStateProvider>
   );
-}
+});

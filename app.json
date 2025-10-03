@@ -2,19 +2,24 @@
   "expo": {
     "name": "Republik",
     "slug": "republik-app",
-    "version": "2.3.5",
+    "version": "2.3.6",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "newArchEnabled": true,
     "ios": {
       "icon": "./assets/images/app.icon",
       "supportsTablet": true,
-      "associatedDomains": ["applinks:republik.ch", "applinks:www.republik.ch"],
+      "associatedDomains": [
+        "applinks:republik.ch",
+        "applinks:www.republik.ch"
+      ],
       "bundleIdentifier": "app.republik",
       "buildNumber": "400",
       "requireFullScreen": true,
       "infoPlist": {
-        "UIBackgroundModes": ["audio"],
+        "UIBackgroundModes": [
+          "audio"
+        ],
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Dieses App kann Ihre Kamera nutzen um ein Profilbild hochzuladen.",
         "SKExternalLinkAccount": {
@@ -50,7 +55,10 @@
               "host": "republik.ch"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ],
       "permissions": [
@@ -90,13 +98,24 @@
       [
         "expo-font",
         {
-          "fonts": ["./assets/fonts/GTAmerica-Regular.otf"]
+          "fonts": [
+            "./assets/fonts/GTAmerica-Regular.otf"
+          ]
         }
       ],
       [
         "expo-screen-orientation",
         {
           "initialOrientation": "DEFAULT"
+        }
+      ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "note": "Uses SENTRY_AUTH_TOKEN env to authenticate with Sentry.",
+          "project": "republik-app",
+          "organization": "republik"
         }
       ]
     ],
