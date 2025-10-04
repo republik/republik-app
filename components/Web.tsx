@@ -60,6 +60,16 @@ const Web = () => {
   const { appState } = globalState;
   const [didCrash, setDidCrash] = useState<boolean | undefined>();
 
+  // Message queue for async processing
+  const messageQueue = useRef<Array<{
+    type: string;
+    id: string;
+    colorSchemeKey?: string;
+    payload: any;
+    timestamp: number;
+  }>>([]);
+  const isProcessingQueue = useRef(false);
+
   useEffect(() => {
     console.log(appState, didCrash);
     if (didCrash && appState === "active" && webviewRef.current) {
@@ -179,23 +189,20 @@ const Web = () => {
     }, 2 * 1000);
   }, [isReady, pendingMessages, dispatch]);
 
-  const onMessage = async (e: WebViewMessageEvent) => {
-    let messageType = 'unknown';
+  // Process a single message from the queue
+  const processMessage = async (message: {
+    type: string;
+    id: string;
+    colorSchemeKey?: string;
+    payload: any;
+    timestamp: number;
+  }) => {
+    const startTime = Date.now();
     
     try {
-      const message: {
-        type: string;
-        id: string;
-        colorSchemeKey?: string;
-        payload: any;
-      } = JSON.parse(e.nativeEvent.data) || {};
-      
-      messageType = message.type;
-      devLog("onMessage", message);
-      
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => {
-          const error = new Error(`WebView message timeout: ${messageType}`);
+          const error = new Error(`WebView message timeout: ${message.type}`);
           error.name = 'WebViewTimeout';
           reject(error);
         }, 3000)
@@ -248,14 +255,76 @@ const Web = () => {
       };
 
       await Promise.race([processingPromise(), timeoutPromise]);
+      
+      // Log slow processing
+      const processingTime = Date.now() - startTime;
+      if (processingTime > 100) {
+        console.warn(`Slow message processing [${message.type}]: ${processingTime}ms`);
+      }
     } catch (error) {
-      // Add minimal context and re-throw for Sentry
-      console.error(`WebView message error [${messageType}]:`, {
+      console.error(`WebView message error [${message.type}]:`, {
+        error,
+        queueAge: Date.now() - message.timestamp,
+        platform: Platform.OS
+      });
+      throw error;
+    }
+  };
+
+  // Process the message queue asynchronously
+  const processMessageQueue = async () => {
+    if (isProcessingQueue.current || messageQueue.current.length === 0) {
+      return;
+    }
+
+    isProcessingQueue.current = true;
+
+    while (messageQueue.current.length > 0) {
+      const message = messageQueue.current.shift();
+      if (!message) break;
+
+      try {
+        await processMessage(message);
+      } catch (error) {
+        // Error already logged in processMessage, continue processing queue
+        console.error('Queue processing error, continuing...', error);
+      }
+
+      // Yield control back to the main thread between messages
+      await new Promise(resolve => setImmediate(resolve));
+    }
+
+    isProcessingQueue.current = false;
+  };
+
+  // Fast, non-blocking message handler - just parse and queue
+  const onMessage = (e: WebViewMessageEvent) => {
+    try {
+      const message: {
+        type: string;
+        id: string;
+        colorSchemeKey?: string;
+        payload: any;
+      } = JSON.parse(e.nativeEvent.data) || {};
+      
+      devLog("onMessage (queued)", message);
+      
+      // Add to queue with timestamp
+      messageQueue.current.push({
+        ...message,
+        timestamp: Date.now()
+      });
+
+      // Trigger async processing
+      setImmediate(() => processMessageQueue());
+      
+    } catch (error) {
+      console.error('WebView message parse error:', {
         error,
         messageSize: e.nativeEvent.data.length,
         platform: Platform.OS
       });
-      throw error;
+      // Don't throw - keep WebView responsive
     }
   };
 
