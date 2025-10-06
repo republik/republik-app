@@ -2,7 +2,7 @@
   "expo": {
     "name": "Republik",
     "slug": "republik-app",
-    "version": "2.3.6",
+    "version": "2.3.7",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "newArchEnabled": true,
