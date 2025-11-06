@@ -37,7 +37,7 @@
         "monochromeImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
+      "edgeToEdgeEnabled": false,
       "package": "app.republik",
       "versionCode": 400,
       "googleServicesFile": "./google-services.json",

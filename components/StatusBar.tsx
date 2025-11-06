@@ -20,8 +20,7 @@ export default function CustomStatusBar() {
     if (Platform.OS === "android") {
       const buttonStyle = colorSchemeKey === "dark" ? "light" : "dark";
       NavigationBar.setButtonStyleAsync(buttonStyle);
-      NavigationBar.setVisibilityAsync("hidden");
-      NavigationBar.setBehaviorAsync("overlay-swipe");
+      NavigationBar.setPositionAsync("relative")
     }
   }, [colorSchemeKey, colors.default]);
 
