@@ -18,9 +18,16 @@ export default function CustomStatusBar() {
 
   useEffect(() => {
     if (Platform.OS === "android") {
-      const buttonStyle = colorSchemeKey === "dark" ? "light" : "dark";
-      NavigationBar.setButtonStyleAsync(buttonStyle);
-      NavigationBar.setPositionAsync("relative")
+      const updateNavigationBar = async () => {
+        try {
+          const buttonStyle = colorSchemeKey === "dark" ? "light" : "dark";
+          await NavigationBar.setButtonStyleAsync(buttonStyle);
+          await NavigationBar.setPositionAsync("relative");
+        } catch (e) {
+          console.warn("Failed to update NavigationBar:", e);
+        }
+      };
+      updateNavigationBar();
     }
   }, [colorSchemeKey, colors.default]);
 
