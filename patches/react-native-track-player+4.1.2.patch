@@ -1,8 +1,30 @@
 diff --git a/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/module/MusicModule.kt b/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/module/MusicModule.kt
-index b2409a0..f8e4730 100644
+index b2409a0..e1b6fac 100644
 --- a/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/module/MusicModule.kt
 +++ b/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/module/MusicModule.kt
-@@ -545,7 +545,9 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+@@ -235,10 +235,17 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+         )
+ 
+         Intent(context, MusicService::class.java).also { intent ->
+-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+-                context.startForegroundService(intent)
+-            } else {
+-                context.startService(intent)
++            try {
++                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
++                    context.startForegroundService(intent)
++                } else {
++                    context.startService(intent)
++                }
++            } catch (e: Exception) {
++                Timber.e("ForegroundServiceStartNotAllowedException in setupPlayer: App tried to start a foreground Service when it was not allowed to do so.", e)
++                promise.reject("foreground_service_error", "Cannot start foreground service from background: ${e.message}", e)
++                playerSetUpPromise = null
++                return
+             }
+             context.bindService(intent, this, Context.BIND_AUTO_CREATE)
+         }
+@@ -545,7 +552,9 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
          if (verifyServiceBoundOrReject(callback)) return@launch
  
          if (index >= 0 && index < musicService.tracks.size) {
@@ -13,7 +35,7 @@ index b2409a0..f8e4730 100644
          } else {
              callback.resolve(null)
          }
-@@ -555,7 +557,7 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+@@ -555,7 +564,7 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
      fun getQueue(callback: Promise) = scope.launch {
          if (verifyServiceBoundOrReject(callback)) return@launch
  
@@ -22,7 +44,7 @@ index b2409a0..f8e4730 100644
      }
  
      @ReactMethod
-@@ -584,9 +586,9 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+@@ -584,9 +593,9 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
          if (verifyServiceBoundOrReject(callback)) return@launch
          callback.resolve(
              if (musicService.tracks.isEmpty()) null

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Republik",
     "slug": "republik-app",
-    "version": "2.3.9",
+    "version": "2.3.11",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "newArchEnabled": false,
@@ -64,7 +64,9 @@
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.WRITE_EXTERNAL_STORAGE"
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
       ]
     },
     "plugins": [
