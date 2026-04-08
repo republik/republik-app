@@ -1,5 +1,5 @@
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 import * as Notifications from "expo-notifications";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -8,9 +8,7 @@ import DeepLinkingService from "@/services/DeepLinkingService";
 import AppStateService from "@/services/AppStateService";
 import PushService from "@/services/PushService";
 import Web from "@/components/Web";
-import SetupAudioPlayerSerivce from "@/components/AudioPlayer/SetupAudioPlayerService";
-import HeadlessAudioPlayer from "@/components/AudioPlayer/HeadlessAudioPlayer";
-import TrackPlayer from "react-native-track-player";
+import ExpoAudioPlayer from "@/components/AudioPlayer/ExpoAudioPlayer";
 import { ColorContextProvider } from "@/lib/ColorContext";
 import StatusBar from "@/components/StatusBar";
 import * as Sentry from "@sentry/react-native";
@@ -29,9 +27,6 @@ Sentry.init({
   // spotlight: __DEV__,
 });
 
-TrackPlayer.registerPlaybackService(() =>
-  require("./services/PlaybackService.ts")
-);
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowBanner: true,
@@ -42,22 +37,9 @@ Notifications.setNotificationHandler({
 });
 
 export default Sentry.wrap(function RootLayout() {
-  const [isAudioPlayerReady, setIsAudioPlayerReady] = useState(false);
-
   useEffect(() => {
     SplashScreen.hide();
   }, []);
-
-  //Initialize the AudioPlayer
-  useEffect(() => {
-    const run = async () => {
-      const nextReadyState = await SetupAudioPlayerSerivce();
-      setIsAudioPlayerReady(nextReadyState);
-    };
-    if (!isAudioPlayerReady) {
-      run();
-    }
-  }, [isAudioPlayerReady, setIsAudioPlayerReady]);
 
   return (
     <GlobalStateProvider>
@@ -68,7 +50,7 @@ export default Sentry.wrap(function RootLayout() {
         <ColorContextProvider>
           <StatusBar />
           <Web />
-          {isAudioPlayerReady && <HeadlessAudioPlayer />}
+          <ExpoAudioPlayer />
         </ColorContextProvider>
       </SafeAreaProvider>
     </GlobalStateProvider>

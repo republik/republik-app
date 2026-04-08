@@ -1,4 +1,4 @@
-import * as FileSystem from "expo-file-system";
+import { Paths, File } from "expo-file-system";
 import { Share } from "react-native";
 
 export const downloadFile = async (downloadUrl: string) => {
@@ -8,36 +8,21 @@ export const downloadFile = async (downloadUrl: string) => {
     if (!filename) {
       throw new Error("Could not determine filename from URL");
     }
-    // Create a path in the cache directory
-    const fileUri = `${FileSystem.cacheDirectory}${filename}`;
 
-    // Download the file
-    const downloadResumable = FileSystem.createDownloadResumable(
+    // Download the file using the new expo-file-system API
+    const downloadedFile = await File.downloadFileAsync(
       downloadUrl,
-      fileUri,
-      {},
-      (downloadProgress) => {
-        const progress =
-          downloadProgress.totalBytesWritten /
-          downloadProgress.totalBytesExpectedToWrite;
-        console.log(`Download progress: ${Math.round(progress * 100)}%`);
-      }
+      Paths.cache
     );
 
-    const result = await downloadResumable.downloadAsync();
-    if (!result) {
-      throw new Error("Download failed");
-    }
-    console.log("File downloaded to:", result.uri);
+    console.log("File downloaded to:", downloadedFile.uri);
 
     // Share the downloaded file
     await Share.share({
-      url: result.uri,
+      url: downloadedFile.uri,
       title: filename,
     });
   } catch (error) {
     console.error("Error downloading file:", error);
-    // Optional: Show an alert to the user
-    // Alert.alert("Download Error", "Could not download or share the file.");
   }
 }; 

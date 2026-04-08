@@ -8,7 +8,7 @@ import { useEffect, useRef } from 'react'
  * @param delay in ms, if null or a negative number is passed, the interval will be cleared
  */
 function useInterval(callback: () => void, delay: number | null) {
-  const savedCallback = useRef<() => void>()
+  const savedCallback = useRef<() => void>(callback)
 
   useEffect(() => {
     savedCallback.current = callback

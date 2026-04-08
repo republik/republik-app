@@ -2,7 +2,7 @@
   "expo": {
     "name": "Republik",
     "slug": "republik-app",
-    "version": "2.3.11",
+    "version": "2.4.0",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "newArchEnabled": false,
@@ -119,11 +119,10 @@
           "project": "republik-app",
           "organization": "republik"
         }
-      ]
+      ],
+      "@sentry/react-native",
+      "expo-audio"
     ],
-    "experiments": {
-      "typedRoutes": true
-    },
     "extra": {
       "eas": {
         "projectId": "101932ce-34f7-4301-b760-c11309ce617e"

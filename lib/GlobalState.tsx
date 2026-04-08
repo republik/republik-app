@@ -7,10 +7,10 @@ import React, {
   ReactNode,
 } from "react";
 // import AsyncStorage from "@react-native-async-storage/async-storage";
-import { MMKV } from 'react-native-mmkv'; // Import MMKV
+import { MMKV } from 'react-native-mmkv';
 import * as Crypto from "expo-crypto";
 
-// Instantiate MMKV storage
+// MMKV v3 has proper New Architecture support
 const storage = new MMKV();
 
 export interface Message {
@@ -77,10 +77,10 @@ const writeStore = ({
 }: {
   persistedState: PersistedState;
   setError: (error: Error) => void;
-}): boolean => { // Return boolean for consistency, although MMKV errors are less common here
+}): boolean => {
   try {
     storage.set(KEY, JSON.stringify(persistedState));
-    return true; // Assume success if no error is thrown
+    return true;
   } catch (e) {
     console.error("writeStore", e);
     setError(e instanceof Error ? e : new Error("Unknown error writing state"));

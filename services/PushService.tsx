@@ -57,8 +57,8 @@ const PushService = () => {
     dispatch,
   } = useGlobalState();
 
-  const notificationListener = useRef<Notifications.EventSubscription>();
-  const responseListener = useRef<Notifications.EventSubscription>();
+  const notificationListener = useRef<Notifications.EventSubscription | null>(null);
+  const responseListener = useRef<Notifications.EventSubscription | null>(null);
 
   const onNotificationOpened = (notification: Notifications.Notification) => {
     // there seems to be a bug in the response object of the notification listener
@@ -156,12 +156,8 @@ const PushService = () => {
       });
 
     return () => {
-      notificationListener.current &&
-        Notifications.removeNotificationSubscription(
-          notificationListener.current
-        );
-      responseListener.current &&
-        Notifications.removeNotificationSubscription(responseListener.current);
+      notificationListener.current?.remove();
+      responseListener.current?.remove();
     };
   }, [isSignedIn, dispatch, setGlobalState]);
 
