@@ -5,7 +5,6 @@
     "version": "2.4.0",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
-    "newArchEnabled": false,
     "ios": {
       "icon": "./assets/images/app.icon",
       "supportsTablet": true,
@@ -17,9 +16,6 @@
       "buildNumber": "400",
       "requireFullScreen": true,
       "infoPlist": {
-        "UIBackgroundModes": [
-          "audio"
-        ],
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Dieses App kann Ihre Kamera nutzen um ein Profilbild hochzuladen.",
         "SKExternalLinkAccount": {
@@ -37,7 +33,6 @@
         "monochromeImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": false,
       "package": "app.republik",
       "versionCode": 400,
       "googleServicesFile": "./google-services.json",
@@ -62,9 +57,6 @@
         }
       ],
       "permissions": [
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
       ]
@@ -120,8 +112,14 @@
           "organization": "republik"
         }
       ],
-      "@sentry/react-native",
-      "expo-audio"
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "enableBackgroundPlayback": true
+        }
+      ]
     ],
     "extra": {
       "eas": {
