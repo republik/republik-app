@@ -147,12 +147,28 @@ const ExpoAudioPlayer = () => {
     });
   }, [dispatch]);
 
+  const saveProgressToWeb = useCallback((track: AudioObject | null) => {
+    const player = playerRef.current;
+    const mediaId = track?.item.document.meta?.audioSource?.mediaId;
+    if (player && mediaId && player.currentTime > 0) {
+      dispatch({
+        type: "postMessage",
+        content: {
+          type: "onAppMediaProgressUpdate",
+          currentTime: player.currentTime,
+          mediaId,
+        },
+      });
+    }
+  }, [dispatch]);
+
   const resetCurrentTrack = useCallback(async () => {
+    saveProgressToWeb(activeTrack);
     lazyInitializedTrack.current = null;
     setActiveTrack(null);
     playerRef.current?.clearLockScreenControls();
     playerRef.current?.pause();
-  }, []);
+  }, [activeTrack, saveProgressToWeb]);
 
   const handleError = useCallback(
     (error: Error) => {
@@ -288,6 +304,7 @@ const ExpoAudioPlayer = () => {
 
   const handleStop = useCallback(async () => {
     try {
+      saveProgressToWeb(activeTrack);
       setIsInitialized(false);
       playerRef.current?.pause();
       playerRef.current?.clearLockScreenControls();
@@ -295,7 +312,7 @@ const ExpoAudioPlayer = () => {
     } catch (error: any) {
       handleError(error);
     }
-  }, [syncStateWithWebUI, handleError]);
+  }, [activeTrack, saveProgressToWeb, syncStateWithWebUI, handleError]);
 
   const handleSeek = useCallback(
     async (payload: number) => {
