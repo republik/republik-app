@@ -34,6 +34,7 @@ const generateMessageJS = (data: Message) => {
     "}",
     "document.dispatchEvent(event);",
     "})();",
+    "true;",
   ].join("");
 };
 
@@ -154,14 +155,35 @@ const Web = () => {
       }
       setGlobalState({ pendingUrl: null });
     } else if (!webUrl) {
-      // if nothing is pending navigate to saved url
-      setWebUrl(
-        persistedState.url?.startsWith(FRONTEND_BASE_URL)
-          ? persistedState.url
-          : HOME_URL
-      );
+      const restoredUrl = persistedState.url?.startsWith(FRONTEND_BASE_URL)
+        ? persistedState.url
+        : HOME_URL;
+      console.log(`[Persist] restore: ${restoredUrl} (stored: ${persistedState.url ?? "none"})`);
+      setWebUrl(restoredUrl);
     }
   }, [webUrl, globalState, persistedState, setGlobalState, dispatch]);
+
+  // Periodic URL sync to guard against OS termination without lifecycle events.
+  // Asks the WebView for its actual current URL and persists it via a dedicated
+  // "urlSync" message type that does not affect the navigation history stack.
+  useEffect(() => {
+    if (!isReady) return;
+
+    const interval = setInterval(() => {
+      if (webviewRef.current) {
+        webviewRef.current.injectJavaScript(`
+          (function() {
+            window.ReactNativeWebView.postMessage(
+              JSON.stringify({ type: 'urlSync', payload: { url: window.location.href } })
+            );
+          })();
+          true;
+        `);
+      }
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [isReady]);
 
   // This effect handles sending queued messages
   useEffect(() => {
@@ -213,6 +235,17 @@ const Web = () => {
           case "routeChange":
             onNavigationStateChange(message.payload);
             break;
+          case "urlSync": {
+            const syncUrl = message.payload.url?.startsWith(FRONTEND_BASE_URL)
+              ? message.payload.url
+              : `${FRONTEND_BASE_URL}${message.payload.url}`;
+            const shouldPersist = !/\.[a-zA-Z0-9]+$/.test(syncUrl);
+            if (shouldPersist && syncUrl !== persistedState.url) {
+              console.log(`[Persist] urlSync: ${syncUrl}`);
+              setPersistedState({ url: syncUrl });
+            }
+            break;
+          }
           case "share":
             await share(message.payload);
             break;
@@ -376,14 +409,12 @@ const Web = () => {
     //   - for all route changes via pendingUrl
     //   - e.g. notifications & link opening
     if (url !== persistedState.url) {
-      // If url has file extensions, keep the previous URL in persisted state
       const shouldPersist = !/\.[a-zA-Z0-9]+$/.test(url);
       if (shouldPersist) {
-        // Just persist the URL - call the synchronous function
+        console.log(`[Persist] routeChange: ${url}`);
         const success = setPersistedState({ url });
-        // Check the boolean result directly
         if (!success) {
-          console.warn("Failed to persist navigation state");
+          console.warn("[Persist] routeChange: MMKV write failed");
         }
       }
     }

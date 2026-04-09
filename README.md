@@ -134,6 +134,28 @@ The player is rendered as a headless React component (`<ExpoAudioPlayer />`) mou
 - Android hardware back button collapses the expanded player UI
 - Automatic state sync when the app returns to foreground
 
+## URL Persistence
+
+The app persists the WebView's current URL to MMKV storage so users return to their last-viewed page on next launch. Three complementary strategies ensure the URL is saved reliably:
+
+### 1. Navigation events (`routeChange`)
+
+Every time the user navigates within the WebView, the web frontend sends a `routeChange` postMessage with the new URL. On iOS, the native `onNavigationStateChange` callback also fires for `pushState` navigation. Both paths persist the URL to MMKV immediately. This is the primary mechanism and covers the vast majority of navigations.
+
+**Platform note:** On Android, `onNavigationStateChange` does not fire for `history.pushState()` calls. The app relies entirely on the web frontend's `routeChange` messages for SPA navigation on Android.
+
+### 2. Periodic sync (`urlSync`)
+
+A 10-second interval injects JavaScript into the WebView to read `window.location.href` and post it back as a `urlSync` message. If the URL differs from what is currently in MMKV, it is persisted. This is a safety net: if a `routeChange` message was dropped or delayed, the persisted URL is at most ~10 seconds stale. The `urlSync` message type is intentionally separate from `routeChange` -- it does not update the in-session navigation history or trigger any side effects beyond the MMKV write.
+
+**Platform note:** This only runs while the app is in the foreground. When backgrounded, the OS suspends WebView JavaScript execution and the interval stops firing.
+
+### 3. Background transition flush
+
+When the app transitions from active to background or inactive, `AppStateService` calls `setPersistedState({})`. This does not change any data -- it forces a synchronous re-write of the current in-memory state to MMKV as a last-chance flush before the OS suspends or kills the process.
+
+**Platform note:** On iOS, a `SIGKILL` from the OS (e.g. memory pressure) gives no lifecycle event at all -- the process is terminated instantly. This flush only helps when the standard `active -> background` transition occurs. The periodic sync (strategy 2) mitigates the `SIGKILL` scenario by keeping MMKV reasonably up to date while the app is active.
+
 ## Deployment with EAS Build
 
 The app uses Expo Application Services (EAS) for building and deploying to app stores.
