@@ -151,7 +151,7 @@ const ExpoAudioPlayer = () => {
     lazyInitializedTrack.current = null;
     setActiveTrack(null);
     playerRef.current?.clearLockScreenControls();
-    playerRef.current?.replace(null);
+    playerRef.current?.pause();
   }, []);
 
   const handleError = useCallback(
@@ -289,8 +289,8 @@ const ExpoAudioPlayer = () => {
   const handleStop = useCallback(async () => {
     try {
       setIsInitialized(false);
+      playerRef.current?.pause();
       playerRef.current?.clearLockScreenControls();
-      playerRef.current?.replace(null);
       syncStateWithWebUI();
     } catch (error: any) {
       handleError(error);
