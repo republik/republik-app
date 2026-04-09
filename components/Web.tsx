@@ -441,7 +441,11 @@ const Web = () => {
                 : colors.default,
             },
           ]}
-          edges={["right", "left", "top"]}
+          edges={
+            Platform.OS === "android"
+              ? ["right", "left", "top", "bottom"]
+              : ["right", "left", "top"]
+          }
         >
           <WebView
             ref={webviewRef}

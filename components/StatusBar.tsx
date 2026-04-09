@@ -22,6 +22,7 @@ export default function CustomStatusBar() {
         try {
           const buttonStyle = colorSchemeKey === "dark" ? "light" : "dark";
           await NavigationBar.setButtonStyleAsync(buttonStyle);
+          await NavigationBar.setBackgroundColorAsync(colors.default);
           await NavigationBar.setPositionAsync("relative");
         } catch (e) {
           console.warn("Failed to update NavigationBar:", e);
