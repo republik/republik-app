@@ -1,29 +1,21 @@
 # Republik App
 
-A React Native mobile application that provides a native wrapper for the [Republik.ch](https://www.republik.ch) website with enhanced audio playback capabilities.
+A React Native mobile application that provides a native wrapper for the [Republik.ch](https://www.republik.ch) website with enhanced native capabilities.
 
 ## Overview
 
 The Republik App is built with Expo SDK 55 and React Native 0.83, serving as a WebView wrapper for the Republik.ch website. The app enables browsing of Republik content while providing native mobile features like background audio playback, push notifications, and deep linking.
-
-### Key Features
-
-- **WebView Integration**: Renders the complete Republik.ch website
-- **Background Audio Player**: Native audio controls using `expo-audio` for articles with audio content
-- **Bidirectional Communication**: PostMessage API integration between the native app and web content
-- **Deep Linking**: Support for `republik.ch` and `www.republik.ch` URLs
-- **Push Notifications**: Native notification support
 
 ## Architecture
 
 ### Core Components
 
 - **WebView Container** (`components/Web.tsx`): Main component that renders the Republik website and handles communication
-- **Audio Player** (`components/AudioPlayer/ExpoAudioPlayer.tsx`): React component-based audio player using `expo-audio` with native lock screen controls
+- **Audio Player** (`components/AudioPlayer/ExpoAudioPlayer.tsx`): Headless React component using `expo-audio` with native lock screen controls
 - **Global State Management** (`lib/GlobalState.tsx`): Centralized state management for app-wide data
 - **Services**: Background services for deep linking, push notifications, and app state
 
-### Communication Flow
+### PostMessage Bridge
 
 The app uses a PostMessage API to communicate between the native React Native layer and the web content:
 
@@ -114,47 +106,61 @@ eas build --profile development --platform android
 
 The builds will be available in your [Expo dashboard](https://expo.dev) for download and installation.
 
-## Audio Player Implementation
+## Configuration
 
-As of Expo SDK 55, the app uses `expo-audio` (the first-party Expo audio library) replacing the previous `react-native-track-player` integration. The audio player is now a React component (`ExpoAudioPlayer`) rather than a headless service, which removes the need for a separate playback service registration and eliminates the patched git dependency on `react-native-track-player`.
+### Environment Variables
 
-### Architecture
+Copy `.env.example` to `.env` and fill in the required values:
 
-The player is rendered as a headless React component (`<ExpoAudioPlayer />`) mounted in the app root alongside the WebView. It uses the `expo-audio` `createAudioPlayer` API and communicates with the web layer entirely through the PostMessage bridge.
+- `EXPO_PUBLIC_ENV`: Environment name (`development` or `production`)
+- `EXPO_PUBLIC_FRONTEND_BASE_URL`: Base URL for the WebView (defaults to `https://www.republik.ch`)
+- `SENTRY_AUTH_TOKEN`: Sentry auth token for source map uploads at build time (not bundled into the app)
 
-**Lazy initialization**: the track is set up via a `SETUP_TRACK` event before the user hits play. The player is actually initialized (and the audio session started) only when `PLAY` is received, reducing unnecessary resource usage.
+### Key Files
 
-### Audio Features
+- `app.json`: Expo app configuration
+- `eas.json`: EAS Build configuration
+- `package.json`: Dependencies and scripts
 
-- Background audio playback (enabled via `setAudioModeAsync` with `shouldPlayInBackground: true`)
-- Native lock screen controls (set via `player.setActiveForLockScreen`)
+## Features
+
+### Audio Player
+
+`ExpoAudioPlayer` is a headless React component mounted at the app root alongside the WebView. It uses `expo-audio`'s `createAudioPlayer` API and communicates with the web layer entirely through the PostMessage bridge.
+
+**Lazy initialization**: the track is set up via a `SETUP_TRACK` event before the user hits play. The audio session is started only when `PLAY` is received, reducing unnecessary resource usage.
+
+- Background audio playback
+- Native lock screen controls
 - Playback speed control
 - Forward / backward seek
 - Progress synchronization with the web UI at 500 ms intervals while playing
 - Android hardware back button collapses the expanded player UI
 - Automatic state sync when the app returns to foreground
 
-## URL Persistence
+### URL Persistence
 
 The app persists the WebView's current URL to MMKV storage so users return to their last-viewed page on next launch. Three complementary strategies ensure the URL is saved reliably:
 
-### 1. Navigation events (`routeChange`)
+1. **Navigation events**: The web frontend sends a `routeChange` postMessage on every navigation. On iOS, `onNavigationStateChange` also fires for `pushState` navigations. Both paths write to MMKV immediately.
+2. **Periodic sync**: A 10-second interval reads `window.location.href` from the WebView and persists it if it differs from the stored value — a safety net in case a `routeChange` message is dropped.
+3. **Background flush**: When the app transitions to background or inactive, a synchronous MMKV write is forced as a last-chance flush before the OS suspends the process.
 
-Every time the user navigates within the WebView, the web frontend sends a `routeChange` postMessage with the new URL. On iOS, the native `onNavigationStateChange` callback also fires for `pushState` navigation. Both paths persist the URL to MMKV immediately. This is the primary mechanism and covers the vast majority of navigations.
+> **Android note:** `onNavigationStateChange` does not fire for `history.pushState()` calls. SPA navigation on Android relies entirely on `routeChange` messages from the web frontend.
 
-**Platform note:** On Android, `onNavigationStateChange` does not fire for `history.pushState()` calls. The app relies entirely on the web frontend's `routeChange` messages for SPA navigation on Android.
+### Deep Linking
 
-### 2. Periodic sync (`urlSync`)
+The app handles incoming `republik.ch` URLs and routes them directly into the WebView:
 
-A 10-second interval injects JavaScript into the WebView to read `window.location.href` and post it back as a `urlSync` message. If the URL differs from what is currently in MMKV, it is persisted. This is a safety net: if a `routeChange` message was dropped or delayed, the persisted URL is at most ~10 seconds stale. The `urlSync` message type is intentionally separate from `routeChange` -- it does not update the in-session navigation history or trigger any side effects beyond the MMKV write.
+- iOS: Associated domains configured for `republik.ch` and `www.republik.ch`
+- Android: Intent filters for HTTPS scheme on both domains
 
-**Platform note:** This only runs while the app is in the foreground. When backgrounded, the OS suspends WebView JavaScript execution and the interval stops firing.
+### Push Notifications
 
-### 3. Background transition flush
+Push notifications are handled via [Expo Notifications](https://docs.expo.dev/push-notifications/overview/). Tapping a notification navigates the WebView to the notification's target URL.
 
-When the app transitions from active to background or inactive, `AppStateService` calls `setPersistedState({})`. This does not change any data -- it forces a synchronous re-write of the current in-memory state to MMKV as a last-chance flush before the OS suspends or kills the process.
-
-**Platform note:** On iOS, a `SIGKILL` from the OS (e.g. memory pressure) gives no lifecycle event at all -- the process is terminated instantly. This flush only helps when the standard `active -> background` transition occurs. The periodic sync (strategy 2) mitigates the `SIGKILL` scenario by keeping MMKV reasonably up to date while the app is active.
+- iOS: APNs configuration
+- Android: FCM via `google-services.json`
 
 ## Deployment with EAS Build
 
@@ -217,25 +223,3 @@ eas submit --platform android --profile production
 Download the «Distribution APK» file from Google Play Console and upload it to the APK hosting location.
 
 Make sure to update the APK download link at `republik.ch/app/apk/latest` so that it points to the newly uploaded file.
-
-
-## Configuration
-
-### Environment Setup
-
-Key configuration files:
-- `app.json`: Expo app configuration
-- `eas.json`: EAS Build configuration
-- `package.json`: Dependencies and scripts
-
-### Deep Linking
-
-The app supports deep linking for Republik URLs:
-- iOS: Associated domains configured for `republik.ch` and `www.republik.ch`
-- Android: Intent filters for HTTPS scheme on Republik domains
-
-### Push Notifications
-
-Push notifications are configured with [Expo Notifications](https://docs.expo.dev/push-notifications/overview/) for both platforms with platform-specific setup required:
-- iOS: APNs configuration
-- Android: FCM configuration via `google-services.json`
