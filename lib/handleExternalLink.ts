@@ -1,8 +1,15 @@
-import { Alert } from "react-native";
+import { Alert, Linking, Platform } from "react-native";
 import ExternalLinkModule from "@/modules/external-link";
+
+const SHOP_URL = "https://shop.republik.ch";
 
 // Function to handle the external link flow
 export const handleExternalLink = async () => {
+  if (Platform.OS === "android") {
+    await Linking.openURL(SHOP_URL);
+    return;
+  }
+
   try {
     // 1. Check if payments are generally possible (required by Apple before proceeding)
     const canMakePayments = await ExternalLinkModule.checkCanMakePayments();

@@ -277,9 +277,6 @@ const Web = () => {
             });
             break;
           case "external-link":
-            if (Platform.OS !== "ios") {
-              break;
-            }
             handleExternalLink();
             break;
           default:
