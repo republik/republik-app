@@ -4,12 +4,12 @@ A React Native mobile application that provides a native wrapper for the [Republ
 
 ## Overview
 
-The Republik App is built with Expo and React Native, serving as a WebView wrapper for the Republik.ch website. The app enables browsing of Republik content while providing native mobile features like background audio playback, push notifications, and deep linking.
+The Republik App is built with Expo SDK 55 and React Native 0.83, serving as a WebView wrapper for the Republik.ch website. The app enables browsing of Republik content while providing native mobile features like background audio playback, push notifications, and deep linking.
 
 ### Key Features
 
 - **WebView Integration**: Renders the complete Republik.ch website
-- **Background Audio Player**: Native audio controls using `react-native-track-player` for articles with audio content
+- **Background Audio Player**: Native audio controls using `expo-audio` for articles with audio content
 - **Bidirectional Communication**: PostMessage API integration between the native app and web content
 - **Deep Linking**: Support for `republik.ch` and `www.republik.ch` URLs
 - **Push Notifications**: Native notification support
@@ -19,9 +19,9 @@ The Republik App is built with Expo and React Native, serving as a WebView wrapp
 ### Core Components
 
 - **WebView Container** (`components/Web.tsx`): Main component that renders the Republik website and handles communication
-- **Audio Player** (`components/AudioPlayer/HeadlessAudioPlayer.ts`): Headless audio player with native controls
+- **Audio Player** (`components/AudioPlayer/ExpoAudioPlayer.tsx`): React component-based audio player using `expo-audio` with native lock screen controls
 - **Global State Management** (`lib/GlobalState.tsx`): Centralized state management for app-wide data
-- **Services**: Background services for deep linking, push notifications, and playback
+- **Services**: Background services for deep linking, push notifications, and app state
 
 ### Communication Flow
 
@@ -56,9 +56,9 @@ const onMessage = (e: WebViewMessageEvent) => {
 
 ### Prerequisites
 
-- Node.js > v18 (LTS version recommended)
+- Node.js ≥ 18 (LTS version recommended)
 - npm or yarn
-- Expo CLI
+- Expo CLI (`npm install -g expo-cli`)
 - iOS Simulator (macOS) or Android Emulator, requires Xcode 16+ and Android Studio
 
 ### Installation
@@ -116,21 +116,45 @@ The builds will be available in your [Expo dashboard](https://expo.dev) for down
 
 ## Audio Player Implementation
 
-As of August 4th 2025, the app uses an unreleased implementation of `react-native-track-player` that's compatible with Expo SDK 53. Due to the new architecture requirements, we're using a specific commit from the track-player repository:
+As of Expo SDK 55, the app uses `expo-audio` (the first-party Expo audio library) replacing the previous `react-native-track-player` integration. The audio player is now a React component (`ExpoAudioPlayer`) rather than a headless service, which removes the need for a separate playback service registration and eliminates the patched git dependency on `react-native-track-player`.
 
-```json
-"react-native-track-player": "git+https://github.com/doublesymmetry/react-native-track-player.git#f3fc4d560154987dd7d341648b3ee6ac01972e15"
-```
+### Architecture
 
-This should be replaced with alpha/beta/stable versions once released. We're doing this because we need to update the app to APK 31 until end of August 2025.
+The player is rendered as a headless React component (`<ExpoAudioPlayer />`) mounted in the app root alongside the WebView. It uses the `expo-audio` `createAudioPlayer` API and communicates with the web layer entirely through the PostMessage bridge.
+
+**Lazy initialization**: the track is set up via a `SETUP_TRACK` event before the user hits play. The player is actually initialized (and the audio session started) only when `PLAY` is received, reducing unnecessary resource usage.
 
 ### Audio Features
 
-- Background audio playback
-- Native lock screen controls
-- Queue management
+- Background audio playback (enabled via `setAudioModeAsync` with `shouldPlayInBackground: true`)
+- Native lock screen controls (set via `player.setActiveForLockScreen`)
 - Playback speed control
-- Progress synchronization with web UI
+- Forward / backward seek
+- Progress synchronization with the web UI at 500 ms intervals while playing
+- Android hardware back button collapses the expanded player UI
+- Automatic state sync when the app returns to foreground
+
+## URL Persistence
+
+The app persists the WebView's current URL to MMKV storage so users return to their last-viewed page on next launch. Three complementary strategies ensure the URL is saved reliably:
+
+### 1. Navigation events (`routeChange`)
+
+Every time the user navigates within the WebView, the web frontend sends a `routeChange` postMessage with the new URL. On iOS, the native `onNavigationStateChange` callback also fires for `pushState` navigation. Both paths persist the URL to MMKV immediately. This is the primary mechanism and covers the vast majority of navigations.
+
+**Platform note:** On Android, `onNavigationStateChange` does not fire for `history.pushState()` calls. The app relies entirely on the web frontend's `routeChange` messages for SPA navigation on Android.
+
+### 2. Periodic sync (`urlSync`)
+
+A 10-second interval injects JavaScript into the WebView to read `window.location.href` and post it back as a `urlSync` message. If the URL differs from what is currently in MMKV, it is persisted. This is a safety net: if a `routeChange` message was dropped or delayed, the persisted URL is at most ~10 seconds stale. The `urlSync` message type is intentionally separate from `routeChange` -- it does not update the in-session navigation history or trigger any side effects beyond the MMKV write.
+
+**Platform note:** This only runs while the app is in the foreground. When backgrounded, the OS suspends WebView JavaScript execution and the interval stops firing.
+
+### 3. Background transition flush
+
+When the app transitions from active to background or inactive, `AppStateService` calls `setPersistedState({})`. This does not change any data -- it forces a synchronous re-write of the current in-memory state to MMKV as a last-chance flush before the OS suspends or kills the process.
+
+**Platform note:** On iOS, a `SIGKILL` from the OS (e.g. memory pressure) gives no lifecycle event at all -- the process is terminated instantly. This flush only helps when the standard `active -> background` transition occurs. The periodic sync (strategy 2) mitigates the `SIGKILL` scenario by keeping MMKV reasonably up to date while the app is active.
 
 ## Deployment with EAS Build
 
@@ -190,22 +214,9 @@ eas submit --platform android --profile production
 
 #### APK File
 
-Download «Distribution APK» file from Google Play Console and upload to our [S3 Bucket](https://s3.console.aws.amazon.com/s3/buckets/republik-assets?prefix=assets%2Fapp%2F&region=eu-central-1#).
+Download the «Distribution APK» file from Google Play Console and upload it to the APK hosting location.
 
-Make sure to update the [APK download-link](https://republik.ch/app/apk/latest), so that the link points to the newly uploaded APK-file.
-You can update the redirect-link by running the following GraphQL mutation on api.republik.ch:
-
-```graphql
-  mutation {
-    updateRedirection(
-      id:"7e9c49dc-7f1c-43f2-919f-eb92c17ccf2b"
-      source:"/app/apk/latest",
-      target: --> Paste your link for the uploaded APK-file here <---
-      status:302
-    ) {
-      target
-    }
-  }
+Make sure to update the APK download link at `republik.ch/app/apk/latest` so that it points to the newly uploaded file.
 
 
 ## Configuration

@@ -7,34 +7,28 @@ const AppStateService = () => {
   const {
     globalState: { appState },
     setGlobalState,
+    setPersistedState,
     dispatch,
-    setPersistedState
   } = useGlobalState();
-  
-  const previousAppState = useRef<AppStateStatus | null>(null);
+
+  const previousAppState = useRef<AppStateStatus>(AppState.currentState);
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextAppState) => {
-      // Ensure we persist state when app is going to background or inactive
       if (
-        previousAppState.current === "active" && 
+        previousAppState.current === "active" &&
         (nextAppState === "background" || nextAppState === "inactive")
       ) {
-        console.log("App going to background, forcing state persistence");
-        // Force a synchronous write with no changes to ensure latest state is persisted
-        // and directly check the boolean result.
-        const success = setPersistedState({}); 
-        if (success) {
-          console.log("Successfully persisted state before app background");
-        } else {
-          console.error("Failed to persist state before app background");
-        }
+        // Passing {} changes no data, but forces a synchronous re-write of
+        // the current in-memory state to MMKV. This is a last-chance flush
+        // before the OS suspends (or potentially kills) the process.
+        console.log("[Persist] background flush");
+        setPersistedState({});
       }
-      
       previousAppState.current = nextAppState;
       setGlobalState({ appState: nextAppState });
     });
-    
+
     return () => {
       subscription.remove();
     };

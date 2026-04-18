@@ -2,19 +2,20 @@
   "expo": {
     "name": "Republik",
     "slug": "republik-app",
-    "version": "2.3.5",
+    "version": "2.4.0",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
-    "newArchEnabled": true,
+    "scheme": "republik",
     "ios": {
       "icon": "./assets/images/app.icon",
       "supportsTablet": true,
-      "associatedDomains": ["applinks:republik.ch", "applinks:www.republik.ch"],
+      "associatedDomains": [
+        "applinks:republik.ch",
+        "applinks:www.republik.ch"
+      ],
       "bundleIdentifier": "app.republik",
       "buildNumber": "400",
       "requireFullScreen": true,
       "infoPlist": {
-        "UIBackgroundModes": ["audio"],
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Dieses App kann Ihre Kamera nutzen um ein Profilbild hochzuladen.",
         "SKExternalLinkAccount": {
@@ -32,7 +33,6 @@
         "monochromeImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
       "package": "app.republik",
       "versionCode": 400,
       "googleServicesFile": "./google-services.json",
@@ -50,13 +50,15 @@
               "host": "republik.ch"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ],
       "permissions": [
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.WRITE_EXTERNAL_STORAGE"
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
       ]
     },
     "plugins": [
@@ -90,7 +92,9 @@
       [
         "expo-font",
         {
-          "fonts": ["./assets/fonts/GTAmerica-Regular.otf"]
+          "fonts": [
+            "./assets/fonts/GTAmerica-Regular.otf"
+          ]
         }
       ],
       [
@@ -98,11 +102,25 @@
         {
           "initialOrientation": "DEFAULT"
         }
+      ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "note": "Uses SENTRY_AUTH_TOKEN env to authenticate with Sentry.",
+          "project": "republik-app",
+          "organization": "republik"
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "enableBackgroundPlayback": true
+        }
       ]
     ],
-    "experiments": {
-      "typedRoutes": true
-    },
     "extra": {
       "eas": {
         "projectId": "101932ce-34f7-4301-b760-c11309ce617e"

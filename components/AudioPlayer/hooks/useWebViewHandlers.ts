@@ -1,11 +1,10 @@
 import { useCallback } from 'react';
-import { State } from "react-native-track-player"
 import { useGlobalState } from "@/lib/GlobalState"
 import { AudioEvent } from "@/components/AudioPlayer/AudioEvent"
 
 type AudioPlayerState = {
     itemId: string
-    playerState: State
+    playerState: string
     duration: number
     position: number
     playbackRate: number

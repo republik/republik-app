@@ -20,10 +20,14 @@ export const useOrientation = () => {
   );
 
   useEffect(() => {
-    const unlockScreenOerientation = async () => {
-      await ScreenOrientation.unlockAsync()
-    }
-    unlockScreenOerientation()
+    const unlockScreenOrientation = async () => {
+      try {
+        await ScreenOrientation.unlockAsync();
+      } catch (e) {
+        console.warn("Failed to unlock screen orientation:", e);
+      }
+    };
+    unlockScreenOrientation();
   }, [])
 
   useEffect(() => {
@@ -33,7 +37,7 @@ export const useOrientation = () => {
           await ScreenOrientation.getOrientationAsync();
         setOrientation(mapOrientation(initialOrientation));
       } catch (e) {
-        console.error("Failed to get initial screen orientation:", e);
+        console.warn("Failed to get screen orientation:", e);
       }
     };
 

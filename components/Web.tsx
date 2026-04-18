@@ -34,6 +34,7 @@ const generateMessageJS = (data: Message) => {
     "}",
     "document.dispatchEvent(event);",
     "})();",
+    "true;",
   ].join("");
 };
 
@@ -59,6 +60,16 @@ const Web = () => {
 
   const { appState } = globalState;
   const [didCrash, setDidCrash] = useState<boolean | undefined>();
+
+  // Message queue for async processing
+  const messageQueue = useRef<Array<{
+    type: string;
+    id: string;
+    colorSchemeKey?: string;
+    payload: any;
+    timestamp: number;
+  }>>([]);
+  const isProcessingQueue = useRef(false);
 
   useEffect(() => {
     console.log(appState, didCrash);
@@ -144,14 +155,35 @@ const Web = () => {
       }
       setGlobalState({ pendingUrl: null });
     } else if (!webUrl) {
-      // if nothing is pending navigate to saved url
-      setWebUrl(
-        persistedState.url?.startsWith(FRONTEND_BASE_URL)
-          ? persistedState.url
-          : HOME_URL
-      );
+      const restoredUrl = persistedState.url?.startsWith(FRONTEND_BASE_URL)
+        ? persistedState.url
+        : HOME_URL;
+      console.log(`[Persist] restore: ${restoredUrl} (stored: ${persistedState.url ?? "none"})`);
+      setWebUrl(restoredUrl);
     }
   }, [webUrl, globalState, persistedState, setGlobalState, dispatch]);
+
+  // Periodic URL sync to guard against OS termination without lifecycle events.
+  // Asks the WebView for its actual current URL and persists it via a dedicated
+  // "urlSync" message type that does not affect the navigation history stack.
+  useEffect(() => {
+    if (!isReady) return;
+
+    const interval = setInterval(() => {
+      if (webviewRef.current) {
+        webviewRef.current.injectJavaScript(`
+          (function() {
+            window.ReactNativeWebView.postMessage(
+              JSON.stringify({ type: 'urlSync', payload: { url: window.location.href } })
+            );
+          })();
+          true;
+        `);
+      }
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [isReady]);
 
   // This effect handles sending queued messages
   useEffect(() => {
@@ -179,58 +211,153 @@ const Web = () => {
     }, 2 * 1000);
   }, [isReady, pendingMessages, dispatch]);
 
-  const onMessage = (e: WebViewMessageEvent) => {
-    const message: {
-      type: string;
-      id: string;
-      colorSchemeKey?: string;
-      payload: any;
-    } = JSON.parse(e.nativeEvent.data) || {};
-    devLog("onMessage", message);
-    switch (message.type) {
-      case "routeChange":
-        onNavigationStateChange(message.payload);
-        break;
-      case "share":
-        share(message.payload);
-        break;
-      case "haptic":
-        Haptics.notificationAsync(message.payload.type);
-        break;
-      case "play-audio":
-        setGlobalState({ autoPlayAudio: message.payload });
-        setPersistedState({
-          audio: message.payload,
-        });
-        break;
-      case "isSignedIn":
-        setPersistedState({ isSignedIn: message.payload });
-        break;
-      case "fullscreen-enter":
-        setGlobalState({ isFullscreen: true });
-        break;
-      case "fullscreen-exit":
-        setGlobalState({ isFullscreen: false });
-        break;
-      case "setColorScheme":
-        setPersistedState({ userSetColorScheme: message.colorSchemeKey });
-        break;
-      case "ackMessage":
-        dispatch({
-          type: "clearMessage",
-          id: message.id,
-        });
-        break;
-      case "external-link":
-        if (Platform.OS !== "ios") {
-          break;
+  // Process a single message from the queue
+  const processMessage = async (message: {
+    type: string;
+    id: string;
+    colorSchemeKey?: string;
+    payload: any;
+    timestamp: number;
+  }) => {
+    const startTime = Date.now();
+    
+    try {
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => {
+          const error = new Error(`WebView message timeout: ${message.type}`);
+          error.name = 'WebViewTimeout';
+          reject(error);
+        }, 3000)
+      );
+
+      const processingPromise = async () => {
+        switch (message.type) {
+          case "routeChange":
+            onNavigationStateChange(message.payload);
+            break;
+          case "urlSync": {
+            const syncUrl = message.payload.url?.startsWith(FRONTEND_BASE_URL)
+              ? message.payload.url
+              : `${FRONTEND_BASE_URL}${message.payload.url}`;
+            const shouldPersist = !/\.[a-zA-Z0-9]+$/.test(syncUrl);
+            if (shouldPersist && syncUrl !== persistedState.url) {
+              console.log(`[Persist] urlSync: ${syncUrl}`);
+              setPersistedState({ url: syncUrl });
+            }
+            break;
+          }
+          case "share":
+            await share(message.payload);
+            break;
+          case "haptic":
+            await Haptics.notificationAsync(message.payload.type);
+            break;
+          case "play-audio":
+            setGlobalState({ autoPlayAudio: message.payload });
+            setPersistedState({
+              audio: message.payload,
+            });
+            break;
+          case "isSignedIn":
+            setPersistedState({ isSignedIn: message.payload });
+            break;
+          case "fullscreen-enter":
+            setGlobalState({ isFullscreen: true });
+            break;
+          case "fullscreen-exit":
+            setGlobalState({ isFullscreen: false });
+            break;
+          case "setColorScheme":
+            setPersistedState({ userSetColorScheme: message.colorSchemeKey });
+            break;
+          case "ackMessage":
+            dispatch({
+              type: "clearMessage",
+              id: message.id,
+            });
+            break;
+          case "external-link":
+            if (Platform.OS !== "ios") {
+              break;
+            }
+            handleExternalLink();
+            break;
+          default:
+            WebViewEventEmitter.emit(message.type, message.payload);
         }
-        handleExternalLink();
-        break;
-      default:
-        // Forward to an EventEmitter to directly handle the event
-        // in the respective component
-        WebViewEventEmitter.emit(message.type, message.payload);
+      };
+
+      await Promise.race([processingPromise(), timeoutPromise]);
+      
+      // Log slow processing
+      const processingTime = Date.now() - startTime;
+      if (processingTime > 100) {
+        console.warn(`Slow message processing [${message.type}]: ${processingTime}ms`);
+      }
+    } catch (error) {
+      console.error(`WebView message error [${message.type}]:`, {
+        error,
+        queueAge: Date.now() - message.timestamp,
+        platform: Platform.OS
+      });
+      throw error;
+    }
+  };
+
+  // Process the message queue asynchronously
+  const processMessageQueue = async () => {
+    if (isProcessingQueue.current || messageQueue.current.length === 0) {
+      return;
+    }
+
+    isProcessingQueue.current = true;
+
+    while (messageQueue.current.length > 0) {
+      const message = messageQueue.current.shift();
+      if (!message) break;
+
+      try {
+        await processMessage(message);
+      } catch (error) {
+        // Error already logged in processMessage, continue processing queue
+        console.error('Queue processing error, continuing...', error);
+      }
+
+      // Yield control back to the main thread between messages
+      await new Promise(resolve => setImmediate(resolve));
+    }
+
+    isProcessingQueue.current = false;
+  };
+
+  // Fast, non-blocking message handler - just parse and queue
+  const onMessage = (e: WebViewMessageEvent) => {
+    try {
+      const message: {
+        type: string;
+        id: string;
+        colorSchemeKey?: string;
+        payload: any;
+      } = JSON.parse(e.nativeEvent.data) || {};
+      
+      devLog("onMessage (queued)", message);
+      
+      // Add to queue with timestamp
+      messageQueue.current.push({
+        ...message,
+        timestamp: Date.now()
+      });
+
+      // Trigger async processing
+      setImmediate(() => processMessageQueue());
+      
+    } catch (error) {
+      console.error('WebView message parse error:', {
+        error,
+        messageSize: e.nativeEvent.data.length,
+        platform: Platform.OS
+      });
+      // Don't throw - keep WebView responsive
     }
   };
 
@@ -282,14 +409,12 @@ const Web = () => {
     //   - for all route changes via pendingUrl
     //   - e.g. notifications & link opening
     if (url !== persistedState.url) {
-      // If url has file extensions, keep the previous URL in persisted state
       const shouldPersist = !/\.[a-zA-Z0-9]+$/.test(url);
       if (shouldPersist) {
-        // Just persist the URL - call the synchronous function
+        console.log(`[Persist] routeChange: ${url}`);
         const success = setPersistedState({ url });
-        // Check the boolean result directly
         if (!success) {
-          console.warn("Failed to persist navigation state");
+          console.warn("[Persist] routeChange: MMKV write failed");
         }
       }
     }
@@ -316,7 +441,11 @@ const Web = () => {
                 : colors.default,
             },
           ]}
-          edges={["right", "left", "top"]}
+          edges={
+            Platform.OS === "android"
+              ? ["right", "left", "top", "bottom"]
+              : ["right", "left", "top"]
+          }
         >
           <WebView
             ref={webviewRef}

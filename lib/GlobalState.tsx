@@ -4,13 +4,14 @@ import React, {
   useCallback,
   useContext,
   useReducer,
+  useRef,
   ReactNode,
 } from "react";
 // import AsyncStorage from "@react-native-async-storage/async-storage";
-import { MMKV } from 'react-native-mmkv'; // Import MMKV
+import { MMKV } from 'react-native-mmkv';
 import * as Crypto from "expo-crypto";
 
-// Instantiate MMKV storage
+// MMKV v3 has proper New Architecture support
 const storage = new MMKV();
 
 export interface Message {
@@ -77,10 +78,10 @@ const writeStore = ({
 }: {
   persistedState: PersistedState;
   setError: (error: Error) => void;
-}): boolean => { // Return boolean for consistency, although MMKV errors are less common here
+}): boolean => {
   try {
     storage.set(KEY, JSON.stringify(persistedState));
-    return true; // Assume success if no error is thrown
+    return true;
   } catch (e) {
     console.error("writeStore", e);
     setError(e instanceof Error ? e : new Error("Unknown error writing state"));
@@ -128,26 +129,29 @@ export const GlobalStateProvider: React.FC<GlobalStateProviderProps> = ({
 }) => {
   const [error, setError] = useState<Error | undefined>();
   const [persistedState, setPersistedStateInternal] = useState<PersistedState>({});
-  
+  const persistedStateRef = useRef<PersistedState>(persistedState);
+
+  useEffect(() => {
+    persistedStateRef.current = persistedState;
+  }, [persistedState]);
+
   const setPersistedState = useCallback(
     (newState: Partial<PersistedState>): boolean => {
-      const updatedState = { ...persistedState, ...newState };
+      const updatedState = { ...persistedStateRef.current, ...newState };
+      persistedStateRef.current = updatedState;
       setPersistedStateInternal(updatedState);
-      console.log("previous state", persistedState);
       try {
-        console.log("new persisted state", updatedState);
-        const success = writeStore({
+        return writeStore({
           persistedState: updatedState,
           setError,
         });
-        return success;
       } catch (e) {
         console.error("State persistence failed in setPersistedState:", e);
         setError(e instanceof Error ? e : new Error("Unknown error during persistence"));
         return false;
       }
     },
-    [persistedState, setError]
+    [setError]
   );
 
   const [globalState, setGlobalStateRaw] = useState<Record<string, any>>({});
