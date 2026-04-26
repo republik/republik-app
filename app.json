@@ -8,16 +8,14 @@
     "ios": {
       "icon": "./assets/images/app.icon",
       "supportsTablet": true,
-      "associatedDomains": [
-        "applinks:republik.ch",
-        "applinks:www.republik.ch"
-      ],
+      "associatedDomains": ["applinks:republik.ch", "applinks:www.republik.ch"],
       "bundleIdentifier": "app.republik",
       "buildNumber": "400",
       "requireFullScreen": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Dieses App kann Ihre Kamera nutzen um ein Profilbild hochzuladen.",
+        "NSPhotoLibraryAddUsageDescription": "Dieses App kann Ihre Fotobibliothek nutzen um ein Profilbild hochzuladen.",
         "SKExternalLinkAccount": {
           "*": "https://shop.republik.ch"
         }
@@ -50,10 +48,7 @@
               "host": "republik.ch"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         }
       ],
       "permissions": [
@@ -92,9 +87,7 @@
       [
         "expo-font",
         {
-          "fonts": [
-            "./assets/fonts/GTAmerica-Regular.otf"
-          ]
+          "fonts": ["./assets/fonts/GTAmerica-Regular.otf"]
         }
       ],
       [
