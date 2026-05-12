@@ -1,8 +1,13 @@
 import React, { useRef, useState, useEffect } from "react";
 import { WebView, WebViewMessageEvent } from "react-native-webview";
+import type {
+  WebViewErrorEvent,
+  WebViewHttpErrorEvent,
+} from "react-native-webview/lib/WebViewTypes";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { Share, Platform, BackHandler, StatusBar } from "react-native";
+import * as Sentry from "@sentry/react-native";
 
 import {
   APP_VERSION,
@@ -394,6 +399,40 @@ const Web = () => {
     }
   };
 
+  const captureWebViewFailure = (kind: string, summary: string, data: object) => {
+    Sentry.captureMessage(`WebView ${kind}: ${summary}`, {
+      level: "error",
+      contexts: { webview: { ...data, expectedUrl: webUrl } },
+    });
+  };
+
+  const onWebViewError = (e: WebViewErrorEvent) => {
+    const { code, description } = e.nativeEvent;
+    captureWebViewFailure("onError", `${code} ${description}`, e.nativeEvent);
+  };
+
+  const onWebViewHttpError = (e: WebViewHttpErrorEvent) => {
+    const { statusCode, description } = e.nativeEvent;
+    captureWebViewFailure(
+      "onHttpError",
+      `${statusCode} ${description}`,
+      e.nativeEvent
+    );
+  };
+
+  const renderWebViewError = (
+    domain: string | undefined,
+    code: number,
+    description: string
+  ) => {
+    captureWebViewFailure("renderError", `${code} ${description}`, {
+      domain,
+      code,
+      description,
+    });
+    return <NetworkError onReload={() => webviewRef.current?.reload()} />;
+  };
+
   const onNavigationStateChange = ({ url: urlInput }: { url: string }) => {
     const url = urlInput.startsWith(FRONTEND_BASE_URL)
       ? urlInput
@@ -465,9 +504,9 @@ const Web = () => {
             }}
             startInLoadingState
             renderLoading={() => <Loader loading />}
-            renderError={() => (
-              <NetworkError onReload={() => webviewRef.current?.reload()} />
-            )}
+            renderError={renderWebViewError}
+            onError={onWebViewError}
+            onHttpError={onWebViewHttpError}
             // stripe url's are included to enable prolong
             // delete once shop.republik.ch is live
             originWhitelist={[
