@@ -1,8 +1,13 @@
 import React, { useRef, useState, useEffect } from "react";
 import { WebView, WebViewMessageEvent } from "react-native-webview";
+import type {
+  WebViewErrorEvent,
+  WebViewHttpErrorEvent,
+} from "react-native-webview/lib/WebViewTypes";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { Share, Platform, BackHandler, StatusBar } from "react-native";
+import * as Sentry from "@sentry/react-native";
 
 import {
   APP_VERSION,
@@ -39,6 +44,13 @@ const generateMessageJS = (data: Message) => {
 };
 
 const getLast = (array: string[]) => array[array.length - 1];
+
+// Strict same-origin check: rejects e.g. "https://www.republik.chchrome-error://..."
+const isFrontendUrl = (url: string | undefined | null): url is string => {
+  if (!url || !url.startsWith(FRONTEND_BASE_URL)) return false;
+  const next = url.charAt(FRONTEND_BASE_URL.length);
+  return next === "" || next === "/" || next === "?" || next === "#";
+};
 
 const Web = () => {
   const {
@@ -155,7 +167,7 @@ const Web = () => {
       }
       setGlobalState({ pendingUrl: null });
     } else if (!webUrl) {
-      const restoredUrl = persistedState.url?.startsWith(FRONTEND_BASE_URL)
+      const restoredUrl = isFrontendUrl(persistedState.url)
         ? persistedState.url
         : HOME_URL;
       console.log(`[Persist] restore: ${restoredUrl} (stored: ${persistedState.url ?? "none"})`);
@@ -236,9 +248,10 @@ const Web = () => {
             onNavigationStateChange(message.payload);
             break;
           case "urlSync": {
-            const syncUrl = message.payload.url?.startsWith(FRONTEND_BASE_URL)
-              ? message.payload.url
-              : `${FRONTEND_BASE_URL}${message.payload.url}`;
+            const syncUrl = message.payload.url;
+            if (!isFrontendUrl(syncUrl)) {
+              break;
+            }
             const shouldPersist = !/\.[a-zA-Z0-9]+$/.test(syncUrl);
             if (shouldPersist && syncUrl !== persistedState.url) {
               console.log(`[Persist] urlSync: ${syncUrl}`);
@@ -394,10 +407,47 @@ const Web = () => {
     }
   };
 
+  const captureWebViewFailure = (kind: string, summary: string, data: object) => {
+    Sentry.captureMessage(`WebView ${kind}: ${summary}`, {
+      level: "error",
+      contexts: { webview: { ...data, expectedUrl: webUrl } },
+    });
+  };
+
+  const onWebViewError = (e: WebViewErrorEvent) => {
+    const { code, description } = e.nativeEvent;
+    captureWebViewFailure("onError", `${code} ${description}`, e.nativeEvent);
+  };
+
+  const onWebViewHttpError = (e: WebViewHttpErrorEvent) => {
+    const { statusCode, description } = e.nativeEvent;
+    captureWebViewFailure(
+      "onHttpError",
+      `${statusCode} ${description}`,
+      e.nativeEvent
+    );
+  };
+
+  const renderWebViewError = (
+    domain: string | undefined,
+    code: number,
+    description: string
+  ) => {
+    captureWebViewFailure("renderError", `${code} ${description}`, {
+      domain,
+      code,
+      description,
+    });
+    return <NetworkError onReload={() => webviewRef.current?.reload()} />;
+  };
+
   const onNavigationStateChange = ({ url: urlInput }: { url: string }) => {
     const url = urlInput.startsWith(FRONTEND_BASE_URL)
       ? urlInput
       : `${FRONTEND_BASE_URL}${urlInput}`;
+    if (!isFrontendUrl(url)) {
+      return;
+    }
     // deduplicate
     // - called by onMessage routeChange and onNavigationStateChange
     //   - iOS triggers onNavigationStateChange for pushState in the web view
@@ -465,9 +515,9 @@ const Web = () => {
             }}
             startInLoadingState
             renderLoading={() => <Loader loading />}
-            renderError={() => (
-              <NetworkError onReload={() => webviewRef.current?.reload()} />
-            )}
+            renderError={renderWebViewError}
+            onError={onWebViewError}
+            onHttpError={onWebViewHttpError}
             // stripe url's are included to enable prolong
             // delete once shop.republik.ch is live
             originWhitelist={[
