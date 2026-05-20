@@ -45,6 +45,13 @@ const generateMessageJS = (data: Message) => {
 
 const getLast = (array: string[]) => array[array.length - 1];
 
+// Strict same-origin check: rejects e.g. "https://www.republik.chchrome-error://..."
+const isFrontendUrl = (url: string | undefined | null): url is string => {
+  if (!url || !url.startsWith(FRONTEND_BASE_URL)) return false;
+  const next = url.charAt(FRONTEND_BASE_URL.length);
+  return next === "" || next === "/" || next === "?" || next === "#";
+};
+
 const Web = () => {
   const {
     globalState,
@@ -160,7 +167,7 @@ const Web = () => {
       }
       setGlobalState({ pendingUrl: null });
     } else if (!webUrl) {
-      const restoredUrl = persistedState.url?.startsWith(FRONTEND_BASE_URL)
+      const restoredUrl = isFrontendUrl(persistedState.url)
         ? persistedState.url
         : HOME_URL;
       console.log(`[Persist] restore: ${restoredUrl} (stored: ${persistedState.url ?? "none"})`);
@@ -241,9 +248,10 @@ const Web = () => {
             onNavigationStateChange(message.payload);
             break;
           case "urlSync": {
-            const syncUrl = message.payload.url?.startsWith(FRONTEND_BASE_URL)
-              ? message.payload.url
-              : `${FRONTEND_BASE_URL}${message.payload.url}`;
+            const syncUrl = message.payload.url;
+            if (!isFrontendUrl(syncUrl)) {
+              break;
+            }
             const shouldPersist = !/\.[a-zA-Z0-9]+$/.test(syncUrl);
             if (shouldPersist && syncUrl !== persistedState.url) {
               console.log(`[Persist] urlSync: ${syncUrl}`);
@@ -437,6 +445,9 @@ const Web = () => {
     const url = urlInput.startsWith(FRONTEND_BASE_URL)
       ? urlInput
       : `${FRONTEND_BASE_URL}${urlInput}`;
+    if (!isFrontendUrl(url)) {
+      return;
+    }
     // deduplicate
     // - called by onMessage routeChange and onNavigationStateChange
     //   - iOS triggers onNavigationStateChange for pushState in the web view
