@@ -49,38 +49,37 @@ const onMessage = (e: WebViewMessageEvent) => {
 ### Prerequisites
 
 - Node.js ≥ 18 (LTS version recommended)
-- npm or yarn
-- Expo CLI (`npm install -g expo-cli`)
-- iOS Simulator (macOS) or Android Emulator, requires Xcode 16+ and Android Studio
+- [pnpm](https://pnpm.io/installation) (enable via Corepack: `corepack enable`)
+- iOS Simulator (macOS) or Android Emulator; requires Xcode 16+ and Android Studio
 
 ### Installation
 
 1. Install dependencies:
 ```bash
-npm install
+pnpm install
 ```
 
 2. Start the development server:
 ```bash
-npm start
+pnpm start
 # or
-npx expo start
+pnpm exec expo start
 ```
 
 ### Running on Devices
 
 #### iOS Simulator
 ```bash
-npm run ios
+pnpm ios
 # or
-npx expo run:ios
+pnpm exec expo run:ios
 ```
 
 #### Android Emulator
 ```bash
-npm run android
+pnpm android
 # or
-npx expo run:android
+pnpm exec expo run:android
 ```
 
 #### Physical Device (Development Builds)
@@ -88,7 +87,7 @@ npx expo run:android
 For testing on physical devices, a development build needs to be created.
 
 **Prerequisites:**
-- EAS CLI installed: `npm install -g @expo/eas-cli`
+- EAS CLI installed: `pnpm add -g @expo/eas-cli`
 - Expo account (sign up at [expo.dev](https://expo.dev))
 - EAS CLI logged in: `eas login`
 
@@ -121,6 +120,7 @@ Copy `.env.example` to `.env` and fill in the required values:
 - `app.json`: Expo app configuration
 - `eas.json`: EAS Build configuration
 - `package.json`: Dependencies and scripts
+- `pnpm-lock.yaml`: Locked dependency versions (use `pnpm install`, not npm)
 
 ## Features
 
@@ -178,7 +178,7 @@ The app has three build profiles configured in `eas.json`:
 
 1. Install EAS CLI:
 ```bash
-npm install -g @expo/eas-cli
+pnpm add -g @expo/eas-cli
 ```
 
 2. Login to your Expo account:
