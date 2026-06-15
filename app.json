@@ -2,7 +2,7 @@
   "expo": {
     "name": "Republik",
     "slug": "republik-app",
-    "version": "2.4.4",
+    "version": "2.4.5",
     "icon": "./assets/images/icon.png",
     "scheme": "republik",
     "ios": {
@@ -10,7 +10,6 @@
       "supportsTablet": true,
       "associatedDomains": ["applinks:republik.ch", "applinks:www.republik.ch"],
       "bundleIdentifier": "app.republik",
-      "buildNumber": "400",
       "requireFullScreen": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -32,7 +31,6 @@
         "backgroundColor": "#ffffff"
       },
       "package": "app.republik",
-      "versionCode": 400,
       "googleServicesFile": "./google-services.json",
       "intentFilters": [
         {
