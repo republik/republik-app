@@ -66,10 +66,10 @@ const ExpoAudioPlayer = () => {
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const { dispatch } = useGlobalState();
   const playerRef = useRef<AudioPlayer | null>(null);
-  const [activeTrack, setActiveTrack] = useState<AudioObject | null>(null);
   const lazyInitializedTrack = useRef<AudioObject | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [playbackRate, setPlaybackRate] = useState(1);
+  const activeTrackRef = useRef<AudioObject | null>(null);
+  const isInitializedRef = useRef(false);
+  const playbackRateRef = useRef(1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
   const [uiState, setUIState] = useState<UIState>({
@@ -163,12 +163,12 @@ const ExpoAudioPlayer = () => {
   }, [dispatch]);
 
   const resetCurrentTrack = useCallback(async () => {
-    saveProgressToWeb(activeTrack);
+    saveProgressToWeb(activeTrackRef.current);
     lazyInitializedTrack.current = null;
-    setActiveTrack(null);
+    activeTrackRef.current = null;
     playerRef.current?.clearLockScreenControls();
     playerRef.current?.pause();
-  }, [activeTrack, saveProgressToWeb]);
+  }, [saveProgressToWeb]);
 
   const handleError = useCallback(
     (error: Error) => {
@@ -178,13 +178,24 @@ const ExpoAudioPlayer = () => {
     [notifyError]
   );
 
+  const applyPlaybackRate = useCallback((player: AudioPlayer) => {
+    player.setPlaybackRate(playbackRateRef.current);
+  }, []);
+
   const syncStateWithWebUI = useCallback(async () => {
     const player = playerRef.current;
     if (!player) return;
 
-    if (isInitialized && activeTrack) {
-      const status: AudioPlayerState = {
-        itemId: activeTrack.item.id,
+    const track = activeTrackRef.current ?? lazyInitializedTrack.current;
+    const rate = playbackRateRef.current;
+
+    if (isInitializedRef.current && track) {
+      if (Math.abs(player.playbackRate - rate) > 0.01) {
+        player.setPlaybackRate(rate);
+      }
+
+      notifyStateSync({
+        itemId: track.item.id,
         playerState: player.playing
           ? "playing"
           : player.isBuffering
@@ -194,20 +205,19 @@ const ExpoAudioPlayer = () => {
           : "loading",
         duration: player.duration || 0,
         position: player.currentTime || 0,
-        playbackRate: Math.round(player.playbackRate * 100) / 100,
-      };
-      notifyStateSync(status);
+        playbackRate: rate,
+      });
     } else if (lazyInitializedTrack.current) {
       notifyStateSync({
         itemId: lazyInitializedTrack.current.item.id,
         playerState: "idle",
         duration: 0,
         position: lazyInitializedTrack.current.initialTime ?? 0,
-        playbackRate,
+        playbackRate: rate,
         forceUpdate: true,
       });
     }
-  }, [notifyStateSync, isInitialized, activeTrack, playbackRate]);
+  }, [notifyStateSync]);
 
   const handleQueueAdvance = useCallback(
     async (itemId: string) => {
@@ -227,8 +237,8 @@ const ExpoAudioPlayer = () => {
         setIsPlaying(status.playing);
         setIsBuffering(status.isBuffering);
 
-        if (status.didJustFinish && activeTrack) {
-          handleQueueAdvance(activeTrack.item.id);
+        if (status.didJustFinish && activeTrackRef.current) {
+          handleQueueAdvance(activeTrackRef.current.item.id);
           resetCurrentTrack();
         }
       }
@@ -237,7 +247,7 @@ const ExpoAudioPlayer = () => {
     return () => {
       statusListener.remove();
     };
-  }, [activeTrack, handleQueueAdvance, resetCurrentTrack]);
+  }, [handleQueueAdvance, resetCurrentTrack]);
 
   const handlePlay = useCallback(
     async (initialTime?: number) => {
@@ -245,11 +255,11 @@ const ExpoAudioPlayer = () => {
         const player = playerRef.current;
         if (!player) return;
 
-        if (!isInitialized) {
-          setIsInitialized(true);
+        if (!isInitializedRef.current) {
+          isInitializedRef.current = true;
           if (lazyInitializedTrack.current) {
             const track = lazyInitializedTrack.current;
-            setActiveTrack(track);
+            activeTrackRef.current = track;
 
             player.replace({ uri: track.url });
             player.setActiveForLockScreen(
@@ -274,14 +284,15 @@ const ExpoAudioPlayer = () => {
         }
 
         player.play();
-        
-        // Set playback rate after play() - must use setPlaybackRate method
-        player.setPlaybackRate(playbackRate);
+        applyPlaybackRate(player);
 
         if (Platform.OS === "ios") {
           // iOS sometimes needs the rate to be re-applied after playback starts
           setTimeout(() => {
-            playerRef.current?.setPlaybackRate(playbackRate);
+            const currentPlayer = playerRef.current;
+            if (currentPlayer) {
+              applyPlaybackRate(currentPlayer);
+            }
           }, 100);
         }
 
@@ -290,7 +301,7 @@ const ExpoAudioPlayer = () => {
         handleError(error);
       }
     },
-    [syncStateWithWebUI, isInitialized, playbackRate, handleError]
+    [syncStateWithWebUI, applyPlaybackRate, handleError]
   );
 
   const handlePause = useCallback(async () => {
@@ -304,20 +315,20 @@ const ExpoAudioPlayer = () => {
 
   const handleStop = useCallback(async () => {
     try {
-      saveProgressToWeb(activeTrack);
-      setIsInitialized(false);
+      saveProgressToWeb(activeTrackRef.current);
+      isInitializedRef.current = false;
       playerRef.current?.pause();
       playerRef.current?.clearLockScreenControls();
       syncStateWithWebUI();
     } catch (error: any) {
       handleError(error);
     }
-  }, [activeTrack, saveProgressToWeb, syncStateWithWebUI, handleError]);
+  }, [saveProgressToWeb, syncStateWithWebUI, handleError]);
 
   const handleSeek = useCallback(
     async (payload: number) => {
       try {
-        if (isInitialized) {
+        if (isInitializedRef.current) {
           await playerRef.current?.seekTo(payload);
         } else if (lazyInitializedTrack.current) {
           lazyInitializedTrack.current = {
@@ -330,14 +341,14 @@ const ExpoAudioPlayer = () => {
         handleError(error);
       }
     },
-    [syncStateWithWebUI, isInitialized, handleError]
+    [syncStateWithWebUI, handleError]
   );
 
   const handleForward = useCallback(
     async (payload: number) => {
       try {
         const player = playerRef.current;
-        if (isInitialized && player) {
+        if (isInitializedRef.current && player) {
           await player.seekTo(player.currentTime + payload);
         } else if (lazyInitializedTrack.current) {
           lazyInitializedTrack.current = {
@@ -353,14 +364,14 @@ const ExpoAudioPlayer = () => {
         handleError(error);
       }
     },
-    [syncStateWithWebUI, isInitialized, handleError]
+    [syncStateWithWebUI, handleError]
   );
 
   const handleBackward = useCallback(
     async (payload: number) => {
       try {
         const player = playerRef.current;
-        if (isInitialized && player) {
+        if (isInitializedRef.current && player) {
           await player.seekTo(Math.max(player.currentTime - payload, 0));
         } else if (lazyInitializedTrack.current) {
           lazyInitializedTrack.current = {
@@ -376,20 +387,23 @@ const ExpoAudioPlayer = () => {
         handleError(error);
       }
     },
-    [syncStateWithWebUI, isInitialized, handleError]
+    [syncStateWithWebUI, handleError]
   );
 
   const handlePlaybackRate = useCallback(
     async (payload: number) => {
       try {
-        setPlaybackRate(payload);
-        playerRef.current?.setPlaybackRate(payload);
+        playbackRateRef.current = payload;
+        const player = playerRef.current;
+        if (player) {
+          applyPlaybackRate(player);
+        }
         syncStateWithWebUI();
       } catch (error: any) {
         handleError(error);
       }
     },
-    [syncStateWithWebUI, handleError]
+    [syncStateWithWebUI, applyPlaybackRate, handleError]
   );
 
   useInterval(
@@ -431,16 +445,16 @@ const ExpoAudioPlayer = () => {
 
         audioObject.initialTime = initialTime || 0;
 
-        if (newPlaybackRate) {
-          setPlaybackRate(newPlaybackRate);
+        if (newPlaybackRate !== undefined) {
+          playbackRateRef.current = newPlaybackRate;
         }
 
-        if (!isInitialized) {
+        if (!isInitializedRef.current) {
           lazyInitializedTrack.current = audioObject;
           return;
         }
 
-        setActiveTrack(audioObject);
+        activeTrackRef.current = audioObject;
         const player = playerRef.current;
         if (player) {
           player.replace({ uri: audioObject.url });
