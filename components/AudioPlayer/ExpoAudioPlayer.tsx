@@ -449,31 +449,6 @@ const ExpoAudioPlayer = () => {
           playbackRateRef.current = newPlaybackRate;
         }
 
-        const existingTrack =
-          activeTrackRef.current ?? lazyInitializedTrack.current;
-        const isSameTrack = existingTrack?.item.id === audioObject.item.id;
-
-        if (isSameTrack) {
-          const preservedInitialTime = Math.max(
-            existingTrack?.initialTime ?? 0,
-            audioObject.initialTime ?? 0,
-          );
-          audioObject.initialTime = preservedInitialTime;
-
-          if (!isInitializedRef.current) {
-            lazyInitializedTrack.current = audioObject;
-            return;
-          }
-
-          activeTrackRef.current = audioObject;
-          if (autoPlay) {
-            await handlePlay();
-          } else {
-            syncStateWithWebUI();
-          }
-          return;
-        }
-
         if (!isInitializedRef.current) {
           lazyInitializedTrack.current = audioObject;
           return;
@@ -503,11 +478,7 @@ const ExpoAudioPlayer = () => {
         syncStateWithWebUI();
         if (autoPlay) {
           await handlePlay(initialTime);
-        } else if (
-          initialTime &&
-          player &&
-          player.currentTime < initialTime
-        ) {
+        } else if (initialTime && player) {
           await player.seekTo(initialTime);
         }
       } catch (error: any) {
