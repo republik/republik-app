@@ -445,7 +445,7 @@ const ExpoAudioPlayer = () => {
 
         audioObject.initialTime = initialTime || 0;
 
-        if (newPlaybackRate !== undefined) {
+        if (newPlaybackRate !== undefined && newPlaybackRate > 0) {
           playbackRateRef.current = newPlaybackRate;
         }
 
