@@ -525,6 +525,8 @@ const Web = () => {
               "https://js.stripe.com",
               "https://*.stripecdn.com",
               "https://newassets.hcaptcha.com",
+              "https://*.vimeo.com",
+              "https://*.vimeocdn.com"
             ]}
             pullToRefreshEnabled={false}
             allowsFullscreenVideo={true}
