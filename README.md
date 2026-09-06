@@ -135,6 +135,10 @@ Copy `.env.example` to `.env` and fill in the required values:
 - Playback speed control
 - Forward / backward seek
 - Progress synchronization with the web UI at 500 ms intervals while playing
+- Aborted playback (e.g. a stream cut short by a flaky connection) is detected by
+  comparing the last played position against the track duration. The player then
+  stops at that position instead of reporting the track as finished, which would
+  make the web UI skip the item and remove it from the queue.
 - Android hardware back button collapses the expanded player UI
 - Automatic state sync when the app returns to foreground
 
