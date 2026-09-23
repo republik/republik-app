@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import { WebView, WebViewMessageEvent } from "react-native-webview";
 import type {
   WebViewErrorEvent,
@@ -23,6 +23,13 @@ import { useColorContext } from "@/lib/ColorContext";
 import WebViewEventEmitter from "@/lib/WebViewEventEmitter";
 import { downloadFile } from "../lib/downloadFile";
 import { handleExternalLink } from "../lib/handleExternalLink";
+import { makeIntent, NavigationIntent } from "@/lib/NavigationIntent";
+import { logNav } from "@/lib/navigationDiagnostics";
+
+/** How long a push-route message gets to be acked before we force the URL in. */
+const ROUTE_ACK_TIMEOUT = 2500;
+/** How long before we give up entirely and remount the WebView on the URL. */
+const ROUTE_REMOUNT_TIMEOUT = 5000;
 
 // Based on react-native-webview injection for Android
 // https://github.com/react-native-webview/react-native-webview/blob/194c6a2335b12cc05283413c44d0948eb5156e02/android/src/main/java/com/reactnativecommunity/webview/RNCWebViewManager.java#L651-L670
@@ -45,6 +52,13 @@ const generateMessageJS = (data: Message) => {
 
 const getLast = (array: string[]) => array[array.length - 1];
 
+/** Compare two frontend urls by path + query, ignoring a trailing slash/hash. */
+const isSameRoute = (a: string, b: string) => {
+  const normalize = (url: string) =>
+    url.slice(FRONTEND_BASE_URL.length).split("#")[0].replace(/\/$/, "") || "/";
+  return normalize(a) === normalize(b);
+};
+
 // Strict same-origin check: rejects e.g. "https://www.republik.chchrome-error://..."
 const isFrontendUrl = (url: string | undefined | null): url is string => {
   if (!url || !url.startsWith(FRONTEND_BASE_URL)) return false;
@@ -56,6 +70,8 @@ const Web = () => {
   const {
     globalState,
     setGlobalState,
+    requestNavigation,
+    consumeNavigation,
     persistedState,
     setPersistedState,
     pendingMessages,
@@ -63,6 +79,7 @@ const Web = () => {
   } = useGlobalState();
   const webviewRef = useRef<WebView>(null);
   const [webUrl, setWebUrl] = useState<string | undefined>();
+  const [webViewKey, setWebViewKey] = useState(0);
   const [isReady, setIsReady] = useState(false);
   const { colors, colorSchemeKey } = useColorContext();
 
@@ -131,7 +148,7 @@ const Web = () => {
         setHistory(currentHistory.slice(0, currentHistory.length - 1));
         return true;
       }
-      setGlobalState({ pendingUrl: HOME_URL });
+      requestNavigation(makeIntent(HOME_URL, "back", false));
       return true;
     };
     const subscription = BackHandler.addEventListener(
@@ -141,7 +158,62 @@ const Web = () => {
     return () => {
       subscription.remove();
     };
-  }, [setGlobalState, dispatch]);
+  }, [requestNavigation, dispatch]);
+
+  // A deep link arriving after the WebView has mounted is handed to the web app
+  // as a push-route message. That depends on the frontend picking it up, so we
+  // fall back to driving the WebView natively if no route change follows.
+  const pendingRouteRef = useRef<{
+    url: string;
+    timers: ReturnType<typeof setTimeout>[];
+  } | null>(null);
+
+  const clearPendingRoute = useCallback(() => {
+    pendingRouteRef.current?.timers.forEach(clearTimeout);
+    pendingRouteRef.current = null;
+  }, []);
+
+  useEffect(() => clearPendingRoute, [clearPendingRoute]);
+
+  const navigateLate = useCallback(
+    (url: string, withFallback: boolean) => {
+      if (!isFrontendUrl(url)) {
+        return;
+      }
+      clearPendingRoute();
+      dispatch({
+        type: "postMessage",
+        content: {
+          type: "push-route",
+          url: url.slice(FRONTEND_BASE_URL.length) || "/",
+        },
+      });
+      // The in-app back handler already works through push-route alone; only
+      // links coming from outside the app get the native fallback.
+      if (!withFallback) {
+        return;
+      }
+      const timers = [
+        setTimeout(() => {
+          logNav("nav.fallback.inject", { url });
+          webviewRef.current?.injectJavaScript(
+            `window.location.assign(${JSON.stringify(url)});true;`
+          );
+        }, ROUTE_ACK_TIMEOUT),
+        setTimeout(() => {
+          logNav("nav.fallback.remount", { url });
+          pendingRouteRef.current = null;
+          setIsReady(false);
+          setWebUrl(url);
+          setWebViewKey((key) => key + 1);
+        }, ROUTE_REMOUNT_TIMEOUT),
+      ];
+      pendingRouteRef.current = { url, timers };
+    },
+    [clearPendingRoute, dispatch]
+  );
+
+  const consumedIntentIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     // wait for all services
@@ -153,27 +225,58 @@ const Web = () => {
       return;
     }
 
-    if (globalState.pendingUrl) {
+    const intent: NavigationIntent | null = globalState.navIntent ?? null;
+    if (intent && intent.id !== consumedIntentIdRef.current) {
+      consumedIntentIdRef.current = intent.id;
+      logNav("nav.resolved", {
+        url: intent.url,
+        source: intent.source,
+        coldStart: intent.coldStart,
+        webUrlWasSet: !!webUrl,
+      });
       if (webUrl) {
-        dispatch({
-          type: "postMessage",
-          content: {
-            type: "push-route",
-            url: globalState.pendingUrl.replace(FRONTEND_BASE_URL, ""),
-          },
-        });
+        navigateLate(intent.url, intent.source !== "back");
       } else {
-        setWebUrl(globalState.pendingUrl);
+        setWebUrl(intent.url);
       }
-      setGlobalState({ pendingUrl: null });
-    } else if (!webUrl) {
+      consumeNavigation(intent.id);
+      return;
+    }
+
+    if (!webUrl && !intent) {
       const restoredUrl = isFrontendUrl(persistedState.url)
         ? persistedState.url
         : HOME_URL;
-      console.log(`[Persist] restore: ${restoredUrl} (stored: ${persistedState.url ?? "none"})`);
+      logNav("nav.restore", {
+        url: restoredUrl,
+        stored: persistedState.url ?? null,
+      });
       setWebUrl(restoredUrl);
     }
-  }, [webUrl, globalState, persistedState, setGlobalState, dispatch]);
+  }, [
+    webUrl,
+    globalState.deepLinkingReady,
+    globalState.pushReady,
+    globalState.persistedStateReady,
+    globalState.navIntent,
+    persistedState.url,
+    consumeNavigation,
+    navigateLate,
+  ]);
+
+  // Surfaces which competing intent lost, e.g. a buffered push response losing
+  // to the deep link the user just tapped.
+  useEffect(() => {
+    const discarded: NavigationIntent | null =
+      globalState.navIntentDiscarded ?? null;
+    if (discarded) {
+      logNav("nav.discarded", {
+        url: discarded.url,
+        source: discarded.source,
+        coldStart: discarded.coldStart,
+      });
+    }
+  }, [globalState.navIntentDiscarded]);
 
   // Periodic URL sync to guard against OS termination without lifecycle events.
   // Asks the WebView for its actual current URL and persists it via a dedicated
@@ -448,12 +551,18 @@ const Web = () => {
     if (!isFrontendUrl(url)) {
       return;
     }
+    // A route change onto the requested target is the ack for push-route.
+    const pendingRoute = pendingRouteRef.current;
+    if (pendingRoute && isSameRoute(url, pendingRoute.url)) {
+      logNav("nav.ack", { url });
+      clearPendingRoute();
+    }
     // deduplicate
     // - called by onMessage routeChange and onNavigationStateChange
     //   - iOS triggers onNavigationStateChange for pushState in the web view
     //   - Android does not
     // - onNavigationStateChange is still necessary
-    //   - for all route changes via pendingUrl
+    //   - for all route changes via a navigation intent
     //   - e.g. notifications & link opening
     if (url !== persistedState.url) {
       const shouldPersist = !/\.[a-zA-Z0-9]+$/.test(url);
@@ -495,6 +604,7 @@ const Web = () => {
           }
         >
           <WebView
+            key={webViewKey}
             ref={webviewRef}
             source={{ uri: webUrl }}
             applicationNameForUserAgent={`RepublikApp/${APP_VERSION}/${BUILD_NUMBER}`}

@@ -11,6 +11,8 @@ import React, {
 import { MMKV } from 'react-native-mmkv';
 import * as Crypto from "expo-crypto";
 
+import { NavigationIntent, preferIntent } from "./NavigationIntent";
+
 // MMKV v3 has proper New Architecture support
 const storage = new MMKV();
 
@@ -31,6 +33,14 @@ interface GlobalStateContext {
   setPersistedState: (newState: Partial<PersistedState>) => boolean;
   globalState: Record<string, any>;
   setGlobalState: (newState: Record<string, any>) => void;
+  /**
+   * Single entry point for "the app should navigate somewhere". Producers
+   * (deep link, push notification, back handler) all go through here so that
+   * the outcome does not depend on which of them resolves first.
+   */
+  requestNavigation: (intent: NavigationIntent) => void;
+  /** Clears the pending intent, but only if it is still the same one. */
+  consumeNavigation: (id: string) => void;
   pendingMessages: Message[];
   dispatch: React.Dispatch<Message>;
 }
@@ -161,6 +171,28 @@ export const GlobalStateProvider: React.FC<GlobalStateProviderProps> = ({
     []
   );
 
+  const requestNavigation = useCallback((intent: NavigationIntent) => {
+    // pure updater: React may invoke it twice in StrictMode
+    setGlobalStateRaw((state) => {
+      const current: NavigationIntent | null = state.navIntent ?? null;
+      const winner = preferIntent(current, intent);
+      if (winner === current) {
+        return { ...state, navIntentDiscarded: intent };
+      }
+      return {
+        ...state,
+        navIntent: winner,
+        navIntentDiscarded: current,
+      };
+    });
+  }, []);
+
+  const consumeNavigation = useCallback((id: string) => {
+    setGlobalStateRaw((state) =>
+      state.navIntent?.id === id ? { ...state, navIntent: null } : state
+    );
+  }, []);
+
   const [pendingMessages, dispatch] = useReducer(messageReducer, []);
 
   useEffect(() => {
@@ -177,6 +209,8 @@ export const GlobalStateProvider: React.FC<GlobalStateProviderProps> = ({
     setPersistedState,
     globalState,
     setGlobalState,
+    requestNavigation,
+    consumeNavigation,
     pendingMessages,
     dispatch,
   };
