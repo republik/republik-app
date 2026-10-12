@@ -8,7 +8,10 @@
     "ios": {
       "icon": "./assets/images/app.icon",
       "supportsTablet": true,
-      "associatedDomains": ["applinks:republik.ch", "applinks:www.republik.ch"],
+      "associatedDomains": [
+        "applinks:republik.ch",
+        "applinks:www.republik.ch"
+      ],
       "bundleIdentifier": "app.republik",
       "requireFullScreen": true,
       "infoPlist": {
@@ -46,7 +49,10 @@
               "host": "republik.ch"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ],
       "permissions": [
@@ -59,7 +65,7 @@
         "expo-build-properties",
         {
           "ios": {
-            "deploymentTarget": "15.4"
+            "deploymentTarget": "16.4"
           }
         }
       ],
@@ -85,7 +91,9 @@
       [
         "expo-font",
         {
-          "fonts": ["./assets/fonts/GTAmerica-Regular.otf"]
+          "fonts": [
+            "./assets/fonts/GTAmerica-Regular.otf"
+          ]
         }
       ],
       [
@@ -110,7 +118,9 @@
           "recordAudioAndroid": false,
           "enableBackgroundPlayback": true
         }
-      ]
+      ],
+      "@sentry/react-native",
+      "expo-asset"
     ],
     "extra": {
       "eas": {

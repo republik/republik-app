@@ -6,7 +6,7 @@ import type {
 } from "react-native-webview/lib/WebViewTypes";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import { Share, Platform, BackHandler, StatusBar } from "react-native";
+import { Share, Platform, BackHandler } from "react-native";
 import * as Sentry from "@sentry/react-native";
 
 import {
@@ -491,7 +491,7 @@ const Web = () => {
           edges={
             Platform.OS === "android"
               ? ["right", "left", "top", "bottom"]
-              : ["right", "left", "top"]
+              : ["top"]
           }
         >
           <WebView
@@ -502,16 +502,6 @@ const Web = () => {
             onMessage={onMessage}
             onLoad={() => {
               setIsReady(true);
-            }}
-            onLoadStart={({ nativeEvent }) => {
-              if (isReady && nativeEvent.loading && Platform.OS === "ios") {
-                StatusBar.setNetworkActivityIndicatorVisible(true);
-              }
-            }}
-            onLoadEnd={({ nativeEvent }) => {
-              if (Platform.OS === "ios") {
-                StatusBar.setNetworkActivityIndicatorVisible(false);
-              }
             }}
             startInLoadingState
             renderLoading={() => <Loader loading />}
